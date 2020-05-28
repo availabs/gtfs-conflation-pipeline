@@ -14,7 +14,7 @@ const RawGtfsSQLiteService = require('../services/RawGtfsSQLiteService');
 const loadGtfsZipIntoSqlite = require('./loadGtfsZipIntoSqlite');
 
 const builder = {
-  gtfs_dir: {
+  gtfs_zip: {
     type: 'string',
     demand: true
   },
@@ -26,13 +26,11 @@ const builder = {
 
 const handler = async argv => {
   try {
-    const { gtfs_dir, sqlite_dir } = argv;
+    const { gtfs_zip, sqlite_dir } = argv;
 
     mkdirpSync(sqlite_dir);
 
     const db_service = RawGtfsSQLiteService.getDbService(sqlite_dir);
-
-    const gtfsZipPath = join(gtfs_dir, 'gtfs.zip');
 
     const sysHasSqlite3 = !!commandExistsSync('sqlite3');
 
@@ -42,7 +40,7 @@ const handler = async argv => {
 
     logger.time('Load GTFS');
 
-    await loadGtfsZipIntoSqlite(db_service, gtfsZipPath);
+    await loadGtfsZipIntoSqlite(db_service, gtfs_zip);
 
     logger.timeEnd('Load GTFS');
   } catch (err) {

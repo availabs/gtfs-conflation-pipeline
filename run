@@ -1,0 +1,47 @@
+#!/usr/bin/env node
+
+/* eslint no-unused-expressions: 0, camelcase: 0 */
+
+const { isAbsolute, join } = require('path');
+
+const yargs = require('yargs');
+
+const raw_gtfs_into_sqlite = require('./src/raw_gtfs_into_sqlite/run');
+
+yargs
+  .parserConfiguration({
+    'camel-case-expansion': false,
+    'flatten-duplicate-arrays': false
+  })
+  .option({
+    gtfs_zip: {
+      desc: 'Path to the GTFS zip archive.',
+      type: 'string',
+      demand: true,
+      default:
+        // Allow ENV variables to set config.
+        process.env.AVL_GTFS_ZIP &&
+        (isAbsolute(process.env.AVL_GTFS_ZIP)
+          ? process.env.AVL_GTFS_ZIP
+          : join(process.cwd(), process.env.AVL_GTFS_ZIP))
+    },
+    sqlite_dir: {
+      type: 'string',
+      desc: 'Path to the directory to contain the SQLite files.',
+      demand: true,
+      default:
+        process.env.AVL_SQLITE_DIR &&
+        (isAbsolute(process.env.AVL_SQLITE_DIR)
+          ? process.env.AVL_SQLITE_DIR
+          : join(process.cwd(), process.env.AVL_SQLITE_DIR))
+    }
+  })
+  .command({
+    ...raw_gtfs_into_sqlite,
+    command: 'load_raw_gtfs_into_sqlite',
+    desc: 'Load the GTFS files into a SQLite Database.'
+  })
+  .demandCommand()
+  .recommendCommands()
+  .strict()
+  .wrap(yargs.terminalWidth() / 1.618).argv;
