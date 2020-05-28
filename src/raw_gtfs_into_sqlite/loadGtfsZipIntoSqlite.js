@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop */
+/* eslint-disable no-await-in-loop, no-continue */
 
 const { exec } = require('child_process');
 
@@ -69,24 +69,19 @@ const loadGtfsFile = (db_service, tableName, zipEntry) =>
   });
 
 const loadGtfsZip = async (db_service, gtfsZipPath) => {
-  const directory = await unzipper.Open.file(gtfsZipPath);
+  const { files: zipEntries } = await unzipper.Open.file(gtfsZipPath);
 
-  const zipEntriesByTableName = directory.files.reduce((acc, zipEntry) => {
+  for (let i = 0; i < zipEntries.length; ++i) {
+    const zipEntry = zipEntries[i];
+
     const { path: fileName } = zipEntry;
+
     const tableName = db_service.getTableNameForGtfsFileName(fileName);
 
-    if (tableName) {
-      acc[tableName] = zipEntry;
+    if (!tableName) {
+      // not a supported table
+      continue;
     }
-
-    return acc;
-  }, {});
-
-  const tableNames = Object.keys(zipEntriesByTableName);
-
-  for (let i = 0; i < tableNames.length; ++i) {
-    const tableName = tableNames[i];
-    const zipEntry = zipEntriesByTableName[tableName];
 
     try {
       await loadGtfsFile(db_service, tableName, zipEntry);
