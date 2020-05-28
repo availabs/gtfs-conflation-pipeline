@@ -1,4 +1,4 @@
-# AVAIL GTFS Conflation Tool
+# AVAIL GTFS Conflation Pipeline
 
 ## Instructions
 
