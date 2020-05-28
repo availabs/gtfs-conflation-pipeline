@@ -10,6 +10,8 @@ npm install
 
 ## Example
 
+### Pipeline Step 1: Load the GTFS data into a SQLite database
+
 ```
 ./run load_raw_gtfs_into_sqlite --gtfs_zip data/gtfs/mta/gtfs.zip --sqlite_dir loaded_gtfs/mta  
 agency: 13.276ms
