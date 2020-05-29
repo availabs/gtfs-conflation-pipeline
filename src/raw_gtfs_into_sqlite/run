@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-const { join } = require('path');
-
 const { sync: mkdirpSync } = require('mkdirp');
 const { sync: commandExistsSync } = require('command-exists');
 

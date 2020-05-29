@@ -23,7 +23,7 @@ function listTables() {
 }
 
 function listColumnsForTable(table) {
-  const tables = listTables.call(this, table) || [];
+  const tables = this.listTables(table) || [];
 
   if (!tables.includes(table)) {
     return null;

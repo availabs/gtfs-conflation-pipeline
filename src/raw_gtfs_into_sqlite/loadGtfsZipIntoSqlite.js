@@ -17,7 +17,8 @@ const loadGtfsFile = (db_service, tableName, zipEntry) =>
 
       const sqliteFilePath = db_service.getSqliteFilePath();
 
-      // https://stackoverflow.com/a/39152519/3970755
+      // Not pretty. See https://stackoverflow.com/a/39152519/3970755
+      //   (Has to do with piping stream into sqlite3's stdin.)
       const batchLoadCmd = `sh -c 'cat | sqlite3 -csv ${sqliteFilePath} ".import /dev/stdin ${tableName}"'`;
 
       // Convert the CSV to an Object stream

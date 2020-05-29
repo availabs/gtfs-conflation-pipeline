@@ -43,15 +43,25 @@ class RawGtfsDbService {
 
     const db = new Database(sqliteFilePath);
 
+    // Encasulates internal state
     const that = { db, sqliteFilePath, supportedGtfsTables };
 
-    this.createTable = createTable.bind(that);
+    // Internal functions access internal state
+    that.createTable = createTable.bind(that);
 
-    Object.keys(schemaQueries).forEach(methodName => {
-      this[methodName] = schemaQueries[methodName].bind(that);
+    // External functions see internal state within.
+    this.createTable = that.createTable;
+
+    // Bind all functions exported from the module
+    Object.keys(schemaQueries).forEach(k => {
+      if (typeof schemaQueries[k] === 'function') {
+        that[k] = schemaQueries[k].bind(that);
+        this[k] = that[k];
+      }
     });
 
-    this.getSqliteFilePath = getSqliteFilePath.bind(that);
+    that.getSqliteFilePath = getSqliteFilePath.bind(that);
+    this.getSqliteFilePath = that.getSqliteFilePath;
   }
 
   getTableNameForGtfsFileName(fileName) {
@@ -59,10 +69,12 @@ class RawGtfsDbService {
       return null;
     }
 
-    // to lowercase and remove .txt filename extension
-    const tableName = fileName.toLowerCase().slice(0, -4);
+    // Table names are the file names with .txt extension removed.
+    const name = fileName.toLowerCase().slice(0, -4);
 
-    return supportedGtfsTables.includes(tableName) ? tableName : null;
+    const tableName = supportedGtfsTables.includes(name) ? name : null;
+
+    return tableName;
   }
 }
 
