@@ -24,3 +24,13 @@ shapes: 503.611ms
 routes: 17.371ms
 Load GTFS: 20412.090ms
 ```
+
+### Pipeline Step 2: Transform to GeoJSON
+
+Transform GTFS shapes to GeoJSON LineStrings and GTFS stops to GeoJSON Points.
+
+_...in development_
+
+### Where to get the data
+
+* [transitfeeds](https://transitfeeds.com/feeds)
