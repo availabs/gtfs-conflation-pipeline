@@ -2,9 +2,13 @@
 
 ## Instructions
 
+### Install Node dependencies
 ```
-sudo apt-get install sqlite3
 npm install
+```
+
+### View the yargs script help.
+```
 ./run --help
 ```
 
@@ -13,23 +17,31 @@ npm install
 ### Pipeline Step 1: Load the GTFS data into a SQLite database
 
 ```
-./run load_raw_gtfs_into_sqlite --gtfs_zip data/gtfs/mta/gtfs.zip --sqlite_dir loaded_gtfs/mta  
-agency: 13.276ms
-calendar: 12.731ms
-calendar_dates: 31.675ms
-stops: 102.236ms
-trips: 769.271ms
-stop_times: 18890.963ms
-shapes: 503.611ms
-routes: 17.371ms
-Load GTFS: 20412.090ms
+./run load_raw_gtfs_into_sqlite --gtfs_zip data/gtfs/cdta/gtfs.zip --output_dir output/cdta
+agency.txt: 20.685ms
+calendar.txt: 23.862ms
+calendar_dates.txt: 50.556ms
+fare_attributes.txt: 16.357ms
+fare_rules.txt: 29.759ms
+feed_info.txt: 20.642ms
+routes.txt: 45.390ms
+shapes.txt: 1138.103ms
+stop_times.txt: 5096.418ms
+stops.txt: 83.641ms
+trips.txt: 207.345ms
+Load GTFS: 6768.442ms
 ```
 
 ### Pipeline Step 2: Transform to GeoJSON
 
 Transform GTFS shapes to GeoJSON LineStrings and GTFS stops to GeoJSON Points.
 
-_...in development_
+```
+./run gtfs_as_geojson --output_dir output/cdta
+loadStops
+stops: 58.662ms
+shapes: 427.291ms
+```
 
 ### Where to get the data
 
