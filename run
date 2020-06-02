@@ -1,46 +1,44 @@
 #!/usr/bin/env node
 
-/* eslint no-unused-expressions: 0, camelcase: 0 */
+/* eslint-disable no-unused-expressions */
 
-const { isAbsolute, join } = require('path');
+const { join } = require('path');
 
 const yargs = require('yargs');
 
-const raw_gtfs_into_sqlite = require('./src/raw_gtfs_into_sqlite/run');
+const raw_gtfs_into_sqlite = require('./src/pipeline_transforms/raw_gtfs_into_sqlite/yargs_wrapper');
+const gtfs_as_geojson = require('./src/pipeline_transforms/gtfs_as_geojson/yargs_wrapper');
+
+/**
+ * @param root0
+ * @param root0.output_dir
+ * @param argv
+ */
+function addOutputDirToEnvironment(argv) {
+  const { output_dir } = argv;
+  console.log(JSON.stringify(output_dir));
+  process.env.AVL_GTFS_CONFLATION_OUTPUT_DIR = output_dir;
+  return argv;
+}
 
 yargs
+  .middleware(addOutputDirToEnvironment)
   .parserConfiguration({
     'camel-case-expansion': false,
     'flatten-duplicate-arrays': false
   })
   .option({
-    gtfs_zip: {
-      desc: 'Path to the GTFS zip archive.',
+    output_dir: {
       type: 'string',
-      demand: true,
+      desc:
+        'Path to the output directory. (Can be set using ENV variable AVL_GTFS_CONFLATION_OUTPUT_DIR.)',
       default:
-        // Allow ENV variables to set config.
-        process.env.AVL_GTFS_ZIP &&
-        (isAbsolute(process.env.AVL_GTFS_ZIP)
-          ? process.env.AVL_GTFS_ZIP
-          : join(process.cwd(), process.env.AVL_GTFS_ZIP))
-    },
-    sqlite_dir: {
-      type: 'string',
-      desc: 'Path to the directory to contain the SQLite files.',
-      demand: true,
-      default:
-        process.env.AVL_SQLITE_DIR &&
-        (isAbsolute(process.env.AVL_SQLITE_DIR)
-          ? process.env.AVL_SQLITE_DIR
-          : join(process.cwd(), process.env.AVL_SQLITE_DIR))
+        process.env.AVL_GTFS_CONFLATION_OUTPUT_DIR ||
+        join(process.cwd(), 'output')
     }
   })
-  .command({
-    ...raw_gtfs_into_sqlite,
-    command: 'load_raw_gtfs_into_sqlite',
-    desc: 'Load the GTFS files into a SQLite Database.'
-  })
+  .command(raw_gtfs_into_sqlite)
+  .command(gtfs_as_geojson)
   .demandCommand()
   .recommendCommands()
   .strict()
