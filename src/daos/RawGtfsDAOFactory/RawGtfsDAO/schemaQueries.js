@@ -2,6 +2,7 @@ const _ = require('lodash');
 
 const db = require('../../../services/DbService');
 
+const DATABASE_SCHEMA_NAME = require('./DATABASE_SCHEMA_NAME')
 const SUPPORTED_TABLES = require('./SUPPORTED_TABLES');
 
 /**
@@ -17,7 +18,7 @@ function listTables() {
 
   const listTablesStmt = db.prepare(`
     SELECT name
-      FROM sqlite_master
+      FROM ${DATABASE_SCHEMA_NAME}.sqlite_master
       WHERE ( name IN (${supportedTablesList}) )
       ORDER BY name ;`);
 
@@ -47,7 +48,7 @@ function listColumnsForTable(tableName) {
   const listColumnsForTableStmt = db.prepare(`
     SELECT
         name
-      FROM pragma_table_info(?)
+      FROM ${DATABASE_SCHEMA_NAME}.pragma_table_info(?)
       ORDER BY cid ;`);
 
   const result = listColumnsForTableStmt.raw().all([tableName]);

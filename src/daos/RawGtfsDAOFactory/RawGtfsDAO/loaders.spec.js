@@ -58,7 +58,7 @@ describe('RawGtfsDAO loaders', () => {
     expect(rowCt).toBe(SAMPLE_ROWS.length);
 
     const tables = rawGtfsDAO.listTables();
-    expect(_.isEqual(tables, ['array']));
+    expect(tables).toEqual(['stops']);
 
     const rows = [...rawGtfsDAO.makeStopsIterator()].sort(
       (a, b) => +a.stop_id - +b.stop_id
@@ -79,7 +79,7 @@ describe('RawGtfsDAO loaders', () => {
         }
       });
     }
-    rmTmpDir();
+
     done();
   });
 
