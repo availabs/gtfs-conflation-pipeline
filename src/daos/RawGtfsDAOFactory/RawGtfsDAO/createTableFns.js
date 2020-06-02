@@ -4,12 +4,16 @@
 // * INVARIANT: code assumes
 // * SPECIFICATION: for generating metadata
 
-// INVARIANTs in CREATE TABLEs.
+// INVARIANTs in CREATE TABLEs. Conflation assumes these.
+//
 // SPECIFICATIONs in an optional DDL file.
+//   Can be used to validate the GTFS.
+
+const SCHEMA = require('./DATABASE_SCHEMA_NAME');
 
 const createAgencyTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS agency (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.agency (
         agency_id        TEXT PRIMARY KEY,
         agency_name      TEXT,
         agency_url       TEXT,
@@ -22,7 +26,7 @@ const createAgencyTable = db =>
 
 const createStopsTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS stops (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.stops (
         stop_id              TEXT PRIMARY KEY,
         stop_code            TEXT,
         stop_name            TEXT,
@@ -38,7 +42,7 @@ const createStopsTable = db =>
 
 const createRoutesTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS routes (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.routes (
         route_id          TEXT PRIMARY KEY,
         agency_id         TEXT,
         route_short_name  TEXT,
@@ -52,9 +56,7 @@ const createRoutesTable = db =>
 
 const createTripsTable = db =>
   db.exec(`
-    BEGIN;
-
-    CREATE TABLE IF NOT EXISTS trips (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.trips (
         route_id               TEXT,
         service_id             TEXT,
         trip_id                TEXT,
@@ -67,19 +69,15 @@ const createTripsTable = db =>
         PRIMARY KEY (route_id, service_id, trip_id)
       ) WITHOUT ROWID ;
 
-    CREATE INDEX IF NOT EXISTS trips_trip_id_idx
+    CREATE INDEX IF NOT EXISTS ${SCHEMA}.trips_trip_id_idx
       ON trips (trip_id) ;
 
-    CREATE INDEX IF NOT EXISTS trips_times_service_id_idx
-      ON trips (service_id) ;
-
-    COMMIT; `);
+    CREATE INDEX IF NOT EXISTS ${SCHEMA}.trips_times_service_id_idx
+      ON trips (service_id) ; `);
 
 const createStopTimesTable = db =>
   db.exec(`
-    BEGIN;
-
-    CREATE TABLE IF NOT EXISTS stop_times (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.stop_times (
         trip_id              TEXT,
         arrival_time         TEXT,
         departure_time       TEXT,
@@ -94,14 +92,13 @@ const createStopTimesTable = db =>
         PRIMARY KEY (trip_id, stop_sequence)
       ) WITHOUT ROWID;
 
-    CREATE INDEX IF NOT EXISTS stop_times_trip_stop_idx
+    CREATE INDEX IF NOT EXISTS ${SCHEMA}.stop_times_trip_stop_idx
       ON stop_times (trip_id, stop_id) ;
-    
-    COMMIT;`);
+  `);
 
 const createCalendarTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS calendar (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.calendar (
         service_id  TEXT PRIMARY KEY,
         monday      INTEGER NOT NULL CHECK (monday    IN (0, 1)),
         tuesday     INTEGER NOT NULL CHECK (tuesday   IN (0, 1)),
@@ -116,18 +113,17 @@ const createCalendarTable = db =>
 
 const createCalendarDatesTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS calendar_dates (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.calendar_dates (
         service_id      TEXT,
         date            TEXT NOT NULL,
         exception_type  TEXT NOT NULL,
 
-        PRIMARY KEY (service_id, date),
-        FOREIGN KEY(exception_type) REFERENCES exception_types(id)
+        PRIMARY KEY (service_id, date)
       ) WITHOUT ROWID ;`);
 
 const createFareAttributesTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS fare_attributes (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.fare_attributes (
         fare_id            TEXT PRIMARY KEY,
         price              REAL,
         currency_type      TEXT,
@@ -139,7 +135,7 @@ const createFareAttributesTable = db =>
 
 const createFareRulesTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS fare_rules (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.fare_rules (
         fare_id         TEXT,
         route_id        TEXT,
         origin_id       TEXT,
@@ -149,7 +145,7 @@ const createFareRulesTable = db =>
 
 const createShapesTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS shapes (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.shapes (
         shape_id             TEXT,
         shape_pt_lat         REAL NOT NULL,
         shape_pt_lon         REAL NOT NULL,
@@ -161,7 +157,7 @@ const createShapesTable = db =>
 
 const createFrequenciesTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS frequencies (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.frequencies (
         trip_id       TEXT PRIMARY KEY,
         start_time    TEXT,
         end_time      TEXT,
@@ -171,7 +167,7 @@ const createFrequenciesTable = db =>
 
 const createTransfersTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS transfers (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.transfers (
         from_stop_id      TEXT NOT NULL,
         to_stop_id        TEXT NOT NULL,
         transfer_type     INTEGER NOT NULL CHECK (transfer_type IN (0, 1, 2, 3)),
@@ -180,7 +176,7 @@ const createTransfersTable = db =>
 
 const createFeedInfoTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS feed_info (
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.feed_info (
         feed_publisher_name  TEXT PRIMARY KEY,
         feed_publisher_url   TEXT,
         feed_lang            TEXT,
@@ -189,7 +185,7 @@ const createFeedInfoTable = db =>
         feed_version         TEXT
       ) WITHOUT ROWID;`);
 
-const createTableFunctionLookUp = {
+module.exports = {
   agency: createAgencyTable,
   stops: createStopsTable,
   routes: createRoutesTable,
@@ -204,15 +200,3 @@ const createTableFunctionLookUp = {
   transfers: createTransfersTable,
   feed_info: createFeedInfoTable
 };
-
-function createTable(tableName) {
-  const createTableFn = createTableFunctionLookUp[tableName];
-
-  if (!createTableFn) {
-    throw new Error(`UNSUPPORTED TABLE NAME ${tableName}`);
-  }
-
-  createTableFn(this.db);
-}
-
-module.exports = createTable;
