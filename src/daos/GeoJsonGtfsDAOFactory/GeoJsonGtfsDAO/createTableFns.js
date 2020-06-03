@@ -1,14 +1,3 @@
-// https://developers.google.com/transit/gtfs/reference
-
-// Two classes of constraints:
-// * INVARIANT: code assumes
-// * SPECIFICATION: for generating metadata
-
-// INVARIANTs in CREATE TABLEs. Conflation assumes these.
-//
-// SPECIFICATIONs in an optional DDL file.
-//   Can be used to validate the GTFS.
-
 const SCHEMA = require('./DATABASE_SCHEMA_NAME');
 
 const createStopsTable = db =>
