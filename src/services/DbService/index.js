@@ -24,7 +24,6 @@ const getSqliteDir = memoizeOne(() => {
     ? join(AVL_GTFS_CONFLATION_OUTPUT_DIR, 'sqlite')
     : join(process.cwd(), AVL_GTFS_CONFLATION_OUTPUT_DIR, 'sqlite');
 
-  console.log('sqliteDir:', sqliteDir)
   mkdirpSync(sqliteDir);
 
   return sqliteDir;

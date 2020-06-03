@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-/* eslint-disable no-unused-expressions */
+/* eslint-disable no-unused-expressions, jsdoc/require-jsdoc */
 
 const { join } = require('path');
 
@@ -8,15 +8,10 @@ const yargs = require('yargs');
 
 const raw_gtfs_into_sqlite = require('./src/pipeline_transforms/raw_gtfs_into_sqlite/yargs_wrapper');
 const gtfs_as_geojson = require('./src/pipeline_transforms/gtfs_as_geojson/yargs_wrapper');
+const gtfs_network = require('./src/pipeline_transforms/gtfs_network/yargs_wrapper');
 
-/**
- * @param root0
- * @param root0.output_dir
- * @param argv
- */
 function addOutputDirToEnvironment(argv) {
   const { output_dir } = argv;
-  console.log(JSON.stringify(output_dir));
   process.env.AVL_GTFS_CONFLATION_OUTPUT_DIR = output_dir;
   return argv;
 }
@@ -39,6 +34,7 @@ yargs
   })
   .command(raw_gtfs_into_sqlite)
   .command(gtfs_as_geojson)
+  .command(gtfs_network)
   .demandCommand()
   .recommendCommands()
   .strict()
