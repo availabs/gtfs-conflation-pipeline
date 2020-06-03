@@ -81,7 +81,9 @@ async function loadAsync(fileName, rowAsyncIterator, opts) {
           VALUES (${columnsList.map(() => '?')}); `);
 
     let rowCt = 0;
+
     for await (const row of rowAsyncIterator) {
+      // TODO: Log warning if row has fields not in columns list
       insertRowStmt.run(formatRow(columnsList, row));
       ++rowCt;
     }

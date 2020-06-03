@@ -2,7 +2,7 @@ const _ = require('lodash');
 
 const db = require('../../../services/DbService');
 
-const DATABASE_SCHEMA_NAME = require('./DATABASE_SCHEMA_NAME')
+const DATABASE_SCHEMA_NAME = require('./DATABASE_SCHEMA_NAME');
 const SUPPORTED_TABLES = require('./SUPPORTED_TABLES');
 
 /**

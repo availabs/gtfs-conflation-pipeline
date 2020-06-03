@@ -37,7 +37,7 @@ const createStopsTable = db =>
         stop_url             TEXT,
         location_type        INTEGER,
         stop_timezone        TEXT,
-        wheelchair_boarding  TEXT
+        wheelchair_boarding  INTEGER
       ) WITHOUT ROWID ;`);
 
 const createRoutesTable = db =>
@@ -63,8 +63,8 @@ const createTripsTable = db =>
         trip_headsign          TEXT,
         direction_id           TEXT,
         shape_id               TEXT,
-        wheelchair_accessible  TEXT,
-        bikes_allowed          TEXT,
+        wheelchair_accessible  INTEGER,
+        bikes_allowed          INTEGER,
 
         PRIMARY KEY (route_id, service_id, trip_id)
       ) WITHOUT ROWID ;
@@ -92,7 +92,7 @@ const createStopTimesTable = db =>
         PRIMARY KEY (trip_id, stop_sequence)
       ) WITHOUT ROWID;
 
-    CREATE INDEX IF NOT EXISTS ${SCHEMA}.stop_times_trip_stop_idx
+    CREATE INDEX IF NOT EXISTS ${SCHEMA}.stop_times_trip_id_stop_id_idx
       ON stop_times (trip_id, stop_id) ;
   `);
 
