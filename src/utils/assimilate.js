@@ -1,7 +1,5 @@
 /* eslint-disable no-param-reassign */
 
-const { inspect } = require('util');
-
 // We need to ensure that the function is bindable to assimilate it as a method.
 // See:
 //    * is the function already bound?
@@ -9,11 +7,7 @@ const { inspect } = require('util');
 //    * is the function an arrow function
 //        https://stackoverflow.com/q/28222228/3970755
 const isBindable = func => {
-  const isFunction =
-    inspect(func) === `[Function: ${func.name}]` ||
-    inspect(func) === `[AsyncFunction: ${func.name}]`;
-
-  if (!isFunction) {
+  if (typeof func !== 'function') {
     return false;
   }
 

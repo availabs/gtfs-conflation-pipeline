@@ -2,6 +2,7 @@
 
 const assimilate = require('./assimilate');
 
+// TODO: handle function generators
 describe('assimilate', () => {
   test('Simple assigning', () => {
     const foo = {};
