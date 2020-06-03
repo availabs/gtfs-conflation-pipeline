@@ -2,3 +2,8 @@ node_modules/
 data/
 output/
 notes/
+
+# https://stackoverflow.com/a/32262670/3970755
+*.bak
+*.bak[0-9]
+*.bak[0-9][0-9]
