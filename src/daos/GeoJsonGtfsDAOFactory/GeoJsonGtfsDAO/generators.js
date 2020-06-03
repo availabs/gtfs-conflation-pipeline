@@ -8,8 +8,6 @@ const toParsedFeaturesIterator = require('../../../utils/toParsedFeaturesIterato
 
 const RawGtfsDAOFactory = require('../../RawGtfsDAOFactory');
 
-const rawGtfsDAO = RawGtfsDAOFactory.getDAO();
-
 const {
   RAW_GTFS: RAW_GTFS_SCHEMA
 } = require('../../../constants/databaseSchemaNames');
@@ -17,6 +15,8 @@ const {
 const GEOJSON_SCHEMA = require('./DATABASE_SCHEMA_NAME');
 
 function* makeTripsIterator() {
+  const rawGtfsDAO = RawGtfsDAOFactory.getDAO();
+
   const tripsTableColumnList = rawGtfsDAO.listColumnsForTable('trips');
 
   if (!tripsTableColumnList) {
@@ -37,6 +37,9 @@ function* makeTripsIterator() {
 
           'properties',
           json_object(
+            'shape_id',
+            trips.shape_id,
+
             'route_id',
             trips.route_id,
 

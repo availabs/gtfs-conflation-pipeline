@@ -4,10 +4,9 @@ const logger = require('../../services/Logger');
 
 const GeoJsonGtfsDAOFactory = require('../../daos/GeoJsonGtfsDAOFactory');
 
-const geoJsonGtfsDAO = GeoJsonGtfsDAOFactory.getDAO();
-
 const main = async () => {
   try {
+    const geoJsonGtfsDAO = GeoJsonGtfsDAOFactory.getDAO();
     geoJsonGtfsDAO.load({ clean: true });
   } catch (err) {
     logger.error(err);
