@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 const main = require('./index');
 
 const command = 'gtfs_as_geojson';
