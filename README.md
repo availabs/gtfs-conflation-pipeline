@@ -12,11 +12,12 @@ npm install
 ./run --help
 ```
 
-## The Pipeline Stages
+## A Pipeline of Transparent Transformations
 
 The data transformations are broken down into stages.
-Each stage's output is written to a SQLite database.
-This allows inspection and manual correction of each stages' output
+Each stage's output is written to its own SQLite database.
+This combination of decomposition and transparency
+  allows inspection and correction of each stages' output
   before proceeding to the next stage.
 
 ### Pipeline Stage 1: Load the GTFS data into a SQLite database
