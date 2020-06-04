@@ -45,8 +45,8 @@ const insertSlicedShape = (shapeLineString, snaps) => {
       INSERT INTO ${SCHEMA}.shape_segments (
         shape_id,
         shape_index,
-        from_stop_id,
-        to_stop_id,
+        from_stop_ids,
+        to_stop_ids,
         geoprox_key,
         feature
       ) VALUES (?, ?, ?, ?, ?, ?);
@@ -57,7 +57,6 @@ const insertSlicedShape = (shapeLineString, snaps) => {
   const shapeLen = turf.length(shapeLineString);
 
   const orderedSnaps = _.sortBy(snaps, 'dist_along');
-
   const { dist_along: startDistAlong } = _.first(orderedSnaps) || {};
   const { dist_along: endDistAlong } = _.last(orderedSnaps) || {};
 
@@ -69,42 +68,75 @@ const insertSlicedShape = (shapeLineString, snaps) => {
     orderedSnaps.push({ stop_id: null, dist_along: shapeLen });
   }
 
+  const headSnapGroup = {
+    dist_along: 0,
+    stop_ids: [_.head(orderedSnaps).stop_id]
+  };
+
+  const groupedSnaps = _.tail(orderedSnaps).reduce(
+    (acc, { stop_id, dist_along }) => {
+      const prevSnapGroup = _.last(acc);
+
+      if (prevSnapGroup.dist_along === dist_along) {
+        prevSnapGroup.stop_ids.push(stop_id);
+      } else {
+        acc.push({
+          dist_along,
+          stop_ids: [stop_id]
+        });
+      }
+
+      return acc;
+    },
+    [headSnapGroup]
+  );
+
   let prevSegEndCoords;
-  for (let i = 0; i < orderedSnaps.length - 1; ++i) {
-    const { stop_id: from_stop_id, dist_along: start_dist } = orderedSnaps[i];
-    const { stop_id: to_stop_id, dist_along: stop_dist } = orderedSnaps[i + 1];
+  for (let i = 0; i < groupedSnaps.length - 1; ++i) {
+    try {
+      const { stop_ids: from_stop_ids, dist_along: start_dist } = groupedSnaps[
+        i
+      ];
+      const { stop_ids: to_stop_ids, dist_along: stop_dist } = groupedSnaps[
+        i + 1
+      ];
 
-    const shapeSliceLineString = turf.lineSliceAlong(
-      shapeLineString,
-      start_dist,
-      stop_dist
-    );
+      const shapeSliceLineString = turf.lineSliceAlong(
+        shapeLineString,
+        start_dist,
+        stop_dist
+      );
 
-    shapeSliceLineString.properties = {
-      shape_index: i,
-      from_stop_id,
-      to_stop_id,
-      start_dist,
-      stop_dist
-    };
+      shapeSliceLineString.properties = {
+        shape_index: i,
+        from_stop_ids,
+        to_stop_ids,
+        start_dist,
+        stop_dist
+      };
 
-    // Ensure connectivity
-    if (i !== 0) {
-      shapeSliceLineString.geometry.coordinates[0] = prevSegEndCoords;
+      // Ensure connectivity
+      if (i !== 0) {
+        shapeSliceLineString.geometry.coordinates[0] = prevSegEndCoords;
+      }
+
+      const geoProximityKey = getGeoProximityKey(shapeSliceLineString);
+
+      snappedStopsInsertStmt.run([
+        `${shape_id}`,
+        `${i}`,
+        JSON.stringify(from_stop_ids),
+        JSON.stringify(to_stop_ids),
+        `${geoProximityKey}`,
+        JSON.stringify(shapeSliceLineString)
+      ]);
+
+      prevSegEndCoords = _.last(turf.getCoords(shapeSliceLineString));
+    } catch (err) {
+      console.log(JSON.stringify({ orderedSnaps }, null, 4));
+      console.error(err);
+      process.exit(1);
     }
-
-    const geoProximityKey = getGeoProximityKey(shapeSliceLineString);
-
-    snappedStopsInsertStmt.run([
-      `${shape_id}`,
-      `${i}`,
-      `${from_stop_id}`,
-      `${to_stop_id}`,
-      `${geoProximityKey}`,
-      JSON.stringify(shapeSliceLineString)
-    ]);
-
-    prevSegEndCoords = _.last(turf.getCoords(shapeSliceLineString));
   }
 };
 
