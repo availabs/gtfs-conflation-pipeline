@@ -17,7 +17,7 @@ npm install
 The data transformations are broken down into stages.
 Each stage's output is written to a SQLite database.
 This allows inspection and manual correction of each stages' output
-  before preceding to the subsequent stage.
+  before proceeding to the next stage.
 
 ### Pipeline Stage 1: Load the GTFS data into a SQLite database
 
