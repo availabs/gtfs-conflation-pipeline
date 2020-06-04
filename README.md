@@ -18,31 +18,27 @@ npm install
 
 ```
 ./run load_raw_gtfs_into_sqlite --gtfs_zip data/gtfs/cdta/gtfs.zip --output_dir output/cdta
-agency.txt: 20.685ms
-calendar.txt: 23.862ms
-calendar_dates.txt: 50.556ms
-fare_attributes.txt: 16.357ms
-fare_rules.txt: 29.759ms
-feed_info.txt: 20.642ms
-routes.txt: 45.390ms
-shapes.txt: 1138.103ms
-stop_times.txt: 5096.418ms
-stops.txt: 83.641ms
-trips.txt: 207.345ms
-Load GTFS: 6768.442ms
+load raw gtfs: 6208.954ms
 ```
 
-### Pipeline Step 2: Transform to GeoJSON
+### Pipeline Step 2: Transform Raw GTFS to GeoJSON
 
 Transform GTFS shapes to GeoJSON LineStrings and GTFS stops to GeoJSON Points.
 
 ```
 ./run gtfs_as_geojson --output_dir output/cdta
-loadStops
-stops: 58.662ms
-shapes: 427.291ms
+load gtfs as geojson: 474.325ms
 ```
 
-### Where to get the data
+### Pipeline Stage 3: GeoJSON Stops and Shapes to GTFS Network Segments
+
+Outputs GTFS shapes as GeoJSON LineStrings segmented at snapped stops.
+
+```
+./run gtfs_network --output_dir output/cdta
+load gtfs network: 19992.788ms
+```
+
+## Where to get the data
 
 * [transitfeeds](https://transitfeeds.com/feeds)

@@ -13,7 +13,7 @@ const main = async ({ gtfs_zip }) => {
   try {
     const db_service = RawGtfsDAO.getDAO();
 
-    logger.time('Load GTFS');
+    logger.time('load raw gtfs');
 
     const { files: zipEntries } = await unzipper.Open.file(gtfs_zip);
 
@@ -29,8 +29,6 @@ const main = async ({ gtfs_zip }) => {
 
       const rowAsyncIterator = pipeline(zipEntry.stream(), csvParseStream);
 
-      logger.time(fileName);
-
       const rowCt = await db_service.loadAsync(fileName, rowAsyncIterator, {
         clean: true
       });
@@ -38,11 +36,9 @@ const main = async ({ gtfs_zip }) => {
       if (rowCt === null) {
         logger.warn(`No table created for ${fileName}.`);
       }
-
-      logger.timeEnd(fileName);
     }
 
-    logger.timeEnd('Load GTFS');
+    logger.timeEnd('load raw gtfs');
   } catch (err) {
     if (err.message === 'database is locked') {
       console.error(

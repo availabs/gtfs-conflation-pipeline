@@ -7,9 +7,9 @@ const GtfsNetworkDAOFactory = require('../../daos/GtfsNetworkDAOFactory');
 const main = async () => {
   try {
     const gtfsNetworkDAO = GtfsNetworkDAOFactory.getDAO();
-    console.time('loadNetwork');
+    console.time('load gtfs network');
     gtfsNetworkDAO.load({ clean: true });
-    console.timeEnd('loadNetwork');
+    console.timeEnd('load gtfs network');
   } catch (err) {
     logger.error(err);
     process.exit(1);
