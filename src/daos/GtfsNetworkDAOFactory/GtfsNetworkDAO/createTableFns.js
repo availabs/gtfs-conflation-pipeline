@@ -13,6 +13,8 @@ const createShapeSegmentsTable = db =>
       PRIMARY KEY (shape_id, shape_index)
     ) WITHOUT ROWID ;
 
+    CREATE INDEX IF NOT EXISTS ${SCHEMA}.shape_segments_geoprox_idx
+      ON shape_segments (geoprox_key) ;
   `);
 
 module.exports = {

@@ -92,6 +92,8 @@ const insertSlicedShape = (shapeLineString, snaps) => {
   );
 
   let prevSegEndCoords;
+  const padLen = `${groupedSnaps.length - 1}`.length;
+
   for (let i = 0; i < groupedSnaps.length - 1; ++i) {
     try {
       const { stop_ids: from_stop_ids, dist_along: start_dist } = groupedSnaps[
@@ -101,13 +103,16 @@ const insertSlicedShape = (shapeLineString, snaps) => {
         i + 1
       ];
 
-      const shapeSliceLineString = turf.lineSliceAlong(
+      const shapeSliceFeature = turf.lineSliceAlong(
         shapeLineString,
         start_dist,
         stop_dist
       );
 
-      shapeSliceLineString.properties = {
+      shapeSliceFeature.id = `${shape_id}:${_.padStart(i, padLen, '0')}`;
+
+      shapeSliceFeature.properties = {
+        shape_id,
         shape_index: i,
         from_stop_ids,
         to_stop_ids,
@@ -117,10 +122,10 @@ const insertSlicedShape = (shapeLineString, snaps) => {
 
       // Ensure connectivity
       if (i !== 0) {
-        shapeSliceLineString.geometry.coordinates[0] = prevSegEndCoords;
+        shapeSliceFeature.geometry.coordinates[0] = prevSegEndCoords;
       }
 
-      const geoProximityKey = getGeoProximityKey(shapeSliceLineString);
+      const geoProximityKey = getGeoProximityKey(shapeSliceFeature);
 
       snappedStopsInsertStmt.run([
         `${shape_id}`,
@@ -128,10 +133,10 @@ const insertSlicedShape = (shapeLineString, snaps) => {
         JSON.stringify(from_stop_ids),
         JSON.stringify(to_stop_ids),
         `${geoProximityKey}`,
-        JSON.stringify(shapeSliceLineString)
+        JSON.stringify(shapeSliceFeature)
       ]);
 
-      prevSegEndCoords = _.last(turf.getCoords(shapeSliceLineString));
+      prevSegEndCoords = _.last(turf.getCoords(shapeSliceFeature));
     } catch (err) {
       console.log(JSON.stringify({ orderedSnaps }, null, 4));
       console.error(err);
