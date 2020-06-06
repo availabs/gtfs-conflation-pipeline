@@ -2,6 +2,7 @@
 
 const assert = require('assert');
 const turf = require('@turf/turf');
+const _ = require('lodash');
 
 const db = require('../../../services/DbService');
 const RawGtfsDAOFactory = require('../../RawGtfsDAOFactory');
@@ -12,8 +13,10 @@ const SCHEMA = require('./DATABASE_SCHEMA_NAME');
 const { createStopsTable, createShapesTable } = require('./createTableFns');
 
 function* toPointsIterator(gtfsStopsIterator) {
-  for (const { stop_id, stop_lat, stop_lon } of gtfsStopsIterator) {
-    yield turf.point([stop_lon, stop_lat], null, { id: stop_id });
+  for (const row of gtfsStopsIterator) {
+    const { stop_id, stop_lon, stop_lat } = row;
+    const properties = _.omit(row, ['stop_lon', 'stop_lat']);
+    yield turf.point([stop_lon, stop_lat], properties, { id: stop_id });
   }
 }
 
