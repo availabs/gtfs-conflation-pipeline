@@ -9,6 +9,8 @@ const yargs = require('yargs');
 const raw_gtfs_into_sqlite = require('./src/pipeline_transforms/raw_gtfs_into_sqlite/yargs_wrapper');
 const gtfs_as_geojson = require('./src/pipeline_transforms/gtfs_as_geojson/yargs_wrapper');
 const gtfs_network = require('./src/pipeline_transforms/gtfs_network/yargs_wrapper');
+// const gtfs_osm_network = require('./src/pipeline_transforms/gtfs_osm_network/yargs_wrapper');
+const output = require('./src/pipeline_transforms/output/yargs_wrapper');
 
 function addOutputDirToEnvironment(argv) {
   const { output_dir } = argv;
@@ -35,6 +37,8 @@ yargs
   .command(raw_gtfs_into_sqlite)
   .command(gtfs_as_geojson)
   .command(gtfs_network)
+  // .command(gtfs_osm_network)
+  .command(output)
   .demandCommand()
   .recommendCommands()
   .strict()
