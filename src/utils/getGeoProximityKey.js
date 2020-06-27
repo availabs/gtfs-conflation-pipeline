@@ -10,11 +10,12 @@ const getKey = (lon, lat) => {
   const p_lon = _.round(Math.abs(+lon * 100000)).toString(2);
   const p_lat = _.round(Math.abs(+lat * 100000)).toString(2);
 
-  // interleve hex
+  // interleave bit strings
   const interleaved_coords = p_lon
     .split("")
     .reduce((acc, c, i) => `${acc}${c || 0}${p_lat[i] || 0}`, "");
 
+  // convert bitstrings to base 36 to reduce size
   const key = _.padStart(
     parseInt(interleaved_coords, 2).toString(36),
     KEY_LEN,
