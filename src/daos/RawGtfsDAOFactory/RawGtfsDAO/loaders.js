@@ -1,15 +1,15 @@
 /* eslint-disable no-restricted-syntax, jsdoc/require-jsdoc */
 
-const _ = require('lodash');
+const _ = require("lodash");
 
-const db = require('../../../services/DbService');
+const db = require("../../../services/DbService");
 
-const formatRow = require('../../../utils/formatRowForSqliteInsert');
+const formatRow = require("../../../utils/formatRowForSqliteInsert");
 
-const createTableFns = require('./createTableFns');
+const createTableFns = require("./createTableFns");
 
-const SCHEMA = require('./DATABASE_SCHEMA_NAME');
-const SUPPORTED_TABLES = require('./SUPPORTED_TABLES');
+const SCHEMA = require("./DATABASE_SCHEMA_NAME");
+const SUPPORTED_TABLES = require("./SUPPORTED_TABLES");
 
 /**
  * @param { string } fileName The GTFS file name
@@ -53,7 +53,7 @@ async function loadAsync(fileName, rowAsyncIterator, opts) {
 
   const xdb = db.openLoadingConnectionToDb(SCHEMA);
 
-  xdb.exec('BEGIN EXCLUSIVE;');
+  xdb.exec("BEGIN EXCLUSIVE;");
 
   try {
     if (clean) {
@@ -78,7 +78,7 @@ async function loadAsync(fileName, rowAsyncIterator, opts) {
 
     const insertRowStmt = xdb.prepare(`
         INSERT INTO ${SCHEMA}.${tableName} (${columnsList})
-          VALUES (${columnsList.map(() => '?')}); `);
+          VALUES (${columnsList.map(() => "?")}); `);
 
     let rowCt = 0;
 
@@ -88,13 +88,13 @@ async function loadAsync(fileName, rowAsyncIterator, opts) {
       ++rowCt;
     }
 
-    xdb.exec('COMMIT;');
+    xdb.exec("COMMIT;");
     return rowCt;
   } catch (err) {
     // Why we want the transaction.
     // This will rollback the DROP TABLE statement if opts.clean was true.
     console.error(err);
-    xdb.exec('ROLLBACK;');
+    xdb.exec("ROLLBACK;");
     throw err;
   } finally {
     db.closeLoadingConnectionToDb(xdb);

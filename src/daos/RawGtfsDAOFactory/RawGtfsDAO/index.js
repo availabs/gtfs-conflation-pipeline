@@ -1,12 +1,13 @@
-const db = require('../../../services/DbService');
+const db = require("../../../services/DbService");
 
-const assimilate = require('../../../utils/assimilate');
+const assimilate = require("../../../utils/assimilate");
 
-const DATABASE_SCHEMA_NAME = require('./DATABASE_SCHEMA_NAME');
+const DATABASE_SCHEMA_NAME = require("./DATABASE_SCHEMA_NAME");
 
-const schemaQueries = require('./schemaQueries');
-const loaders = require('./loaders');
-const generators = require('./generators');
+const schemaQueries = require("./schemaQueries");
+const loaders = require("./loaders");
+const generators = require("./generators");
+const getters = require("./getters");
 
 class RawGtfsDAO {
   constructor() {
@@ -14,8 +15,9 @@ class RawGtfsDAO {
 
     assimilate(this, {
       ...schemaQueries,
+      ...loaders,
       ...generators,
-      ...loaders
+      ...getters
     });
   }
 }

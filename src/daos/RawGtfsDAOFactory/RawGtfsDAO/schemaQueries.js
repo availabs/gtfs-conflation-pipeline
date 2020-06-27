@@ -1,9 +1,9 @@
-const _ = require('lodash');
+const _ = require("lodash");
 
-const db = require('../../../services/DbService');
+const db = require("../../../services/DbService");
 
-const DATABASE_SCHEMA_NAME = require('./DATABASE_SCHEMA_NAME');
-const SUPPORTED_TABLES = require('./SUPPORTED_TABLES');
+const DATABASE_SCHEMA_NAME = require("./DATABASE_SCHEMA_NAME");
+const SUPPORTED_TABLES = require("./SUPPORTED_TABLES");
 
 /**
  * List all GTFS tables.

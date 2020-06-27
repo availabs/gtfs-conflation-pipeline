@@ -1,4 +1,4 @@
-const RawGtfsDAO = require('./RawGtfsDAO');
+const RawGtfsDAO = require("./RawGtfsDAO");
 
 // DAOs are singletons.
 let dao;

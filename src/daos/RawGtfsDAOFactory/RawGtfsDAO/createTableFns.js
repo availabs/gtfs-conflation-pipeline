@@ -9,7 +9,7 @@
 // SPECIFICATIONs in an optional DDL file.
 //   Can be used to validate the GTFS.
 
-const SCHEMA = require('./DATABASE_SCHEMA_NAME');
+const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
 const createAgencyTable = db =>
   db.exec(`
