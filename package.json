@@ -19,6 +19,7 @@
     "@turf/turf": "^5.1.6",
     "better-sqlite3": "^7.0.1",
     "command-exists": "^1.2.9",
+    "eslint-plugin-prettier": "^3.1.4",
     "fast-csv": "^4.3.0",
     "gdal": "^0.9.9",
     "lodash": "^4.17.15",
