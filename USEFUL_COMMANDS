@@ -1,0 +1,32 @@
+#!/bin/bash
+
+exit
+
+set -e
+
+find data/gtfs -mindepth 1 -type d |
+  sort |
+  while read -r dir; do
+    output_dir="output_new/$( basename "$dir" )"
+
+    echo "$dir";
+
+    ./run load_raw_gtfs_into_sqlite --gtfs_zip="${dir}/gtfs.zip" --output_dir="$output_dir"
+    ./run gtfs_as_geojson  --output_dir="$output_dir"
+    ./run gtfs_network  --output_dir="$output_dir"
+    ./run scheduled_bus_traffic --output_dir="$output_dir"
+
+    echo; 
+  done
+
+find data/gtfs -mindepth 1 -type d |
+  sort |
+  while read -r dir; do
+    output_dir="output_new/$( basename "$dir" )"
+
+    echo "$dir";
+
+    ./run gtfs_osm_network --output_dir="$output_dir"
+
+    echo; 
+  done
