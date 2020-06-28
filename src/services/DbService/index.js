@@ -1,19 +1,19 @@
-const { sync: mkdirpSync } = require('mkdirp');
+const { sync: mkdirpSync } = require("mkdirp");
 
-const Database = require('better-sqlite3');
+const Database = require("better-sqlite3");
 
-const { join, isAbsolute } = require('path');
+const { join, isAbsolute } = require("path");
 
-const memoizeOne = require('memoize-one');
+const memoizeOne = require("memoize-one");
 
-const IN_MEMORY = ':memory:';
+const IN_MEMORY = ":memory:";
 
 // Needs to run after module is loaded so "main" has a chance to set.
 const getSqliteDir = memoizeOne(() => {
   const { AVL_GTFS_CONFLATION_OUTPUT_DIR } = process.env;
 
   if (!AVL_GTFS_CONFLATION_OUTPUT_DIR) {
-    console.error('The AVL_GTFS_CONFLATION_OUTPUT_DIR ENV must be set.');
+    console.error("The AVL_GTFS_CONFLATION_OUTPUT_DIR ENV must be set.");
     console.error(
       'It is the responsibility of any "main" module to ensure that it is set.'
     );
@@ -21,8 +21,8 @@ const getSqliteDir = memoizeOne(() => {
   }
 
   const sqliteDir = isAbsolute(AVL_GTFS_CONFLATION_OUTPUT_DIR)
-    ? join(AVL_GTFS_CONFLATION_OUTPUT_DIR, 'sqlite')
-    : join(process.cwd(), AVL_GTFS_CONFLATION_OUTPUT_DIR, 'sqlite');
+    ? join(AVL_GTFS_CONFLATION_OUTPUT_DIR, "sqlite")
+    : join(process.cwd(), AVL_GTFS_CONFLATION_OUTPUT_DIR, "sqlite");
 
   mkdirpSync(sqliteDir);
 

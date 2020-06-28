@@ -4,12 +4,14 @@ const logger = require('../../services/Logger');
 
 const GtfsNetworkDAOFactory = require('../../daos/GtfsNetworkDAOFactory');
 
+const timerId = 'load GTFS network'
+
 const main = async () => {
   try {
     const gtfsNetworkDAO = GtfsNetworkDAOFactory.getDAO();
-    console.time('load gtfs network');
-    gtfsNetworkDAO.load({ clean: true });
-    console.timeEnd('load gtfs network');
+    console.time(timerId);
+    gtfsNetworkDAO.load();
+    console.timeEnd(timerId);
   } catch (err) {
     logger.error(err);
     process.exit(1);
