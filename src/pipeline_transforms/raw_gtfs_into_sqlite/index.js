@@ -1,19 +1,19 @@
 /* eslint-disable no-await-in-loop */
 
-const { pipeline } = require('stream');
+const { pipeline } = require("stream");
 
-const unzipper = require('unzipper');
-const csv = require('fast-csv');
+const unzipper = require("unzipper");
+const csv = require("fast-csv");
 
-const logger = require('../../services/Logger');
+const logger = require("../../services/Logger");
 
-const RawGtfsDAO = require('../../daos/RawGtfsDAOFactory');
+const RawGtfsDAO = require("../../daos/RawGtfsDAOFactory");
 
 const main = async ({ gtfs_zip }) => {
   try {
     const db_service = RawGtfsDAO.getDAO();
 
-    logger.time('load raw gtfs');
+    logger.time("load raw gtfs");
 
     const { files: zipEntries } = await unzipper.Open.file(gtfs_zip);
 
@@ -38,11 +38,11 @@ const main = async ({ gtfs_zip }) => {
       }
     }
 
-    logger.timeEnd('load raw gtfs');
+    logger.timeEnd("load raw gtfs");
   } catch (err) {
-    if (err.message === 'database is locked') {
+    if (err.message === "database is locked") {
       console.error(
-        'ERROR: The GTFS file loader must have exclusive access to the database.'
+        "ERROR: The GTFS file loader must have exclusive access to the database."
       );
     }
 
