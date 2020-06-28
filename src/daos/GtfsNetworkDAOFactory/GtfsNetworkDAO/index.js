@@ -1,11 +1,12 @@
-const db = require('../../../services/DbService');
+const db = require("../../../services/DbService");
 
-const assimilate = require('../../../utils/assimilate');
+const assimilate = require("../../../utils/assimilate");
 
-const DATABASE_SCHEMA_NAME = require('./DATABASE_SCHEMA_NAME');
+const DATABASE_SCHEMA_NAME = require("./DATABASE_SCHEMA_NAME");
 
-const loaders = require('./loaders');
-const generators = require('./generators');
+const loaders = require("./loaders");
+const generators = require("./generators");
+const getters = require("./getters");
 
 class GtfsNetworkDAO {
   constructor() {
@@ -13,7 +14,8 @@ class GtfsNetworkDAO {
 
     assimilate(this, {
       ...loaders,
-      ...generators
+      ...generators,
+      ...getters
     });
   }
 }

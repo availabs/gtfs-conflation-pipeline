@@ -1,1 +1,1 @@
-module.exports = require('../../../constants/databaseSchemaNames').GTFS_NETWORK;
+module.exports = require("../../../constants/databaseSchemaNames").GTFS_NETWORK;
