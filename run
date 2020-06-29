@@ -2,15 +2,16 @@
 
 /* eslint-disable no-unused-expressions, jsdoc/require-jsdoc */
 
-const { join } = require('path');
+const { join } = require("path");
 
-const yargs = require('yargs');
+const yargs = require("yargs");
 
-const raw_gtfs_into_sqlite = require('./src/pipeline_transforms/raw_gtfs_into_sqlite/yargs_wrapper');
-const gtfs_as_geojson = require('./src/pipeline_transforms/gtfs_as_geojson/yargs_wrapper');
-const gtfs_network = require('./src/pipeline_transforms/gtfs_network/yargs_wrapper');
-// const gtfs_osm_network = require('./src/pipeline_transforms/gtfs_osm_network/yargs_wrapper');
-const output = require('./src/pipeline_transforms/output/yargs_wrapper');
+const raw_gtfs_into_sqlite = require("./src/pipeline_transforms/raw_gtfs_into_sqlite/yargs_wrapper");
+const gtfs_as_geojson = require("./src/pipeline_transforms/gtfs_as_geojson/yargs_wrapper");
+const gtfs_network = require("./src/pipeline_transforms/gtfs_network/yargs_wrapper");
+const gtfs_osm_network = require("./src/pipeline_transforms/gtfs_osm_network/yargs_wrapper");
+const scheduled_bus_traffic = require("./src/pipeline_transforms/scheduled_bus_traffic/yargs_wrapper");
+const output = require("./src/pipeline_transforms/output/yargs_wrapper");
 
 function addOutputDirToEnvironment(argv) {
   const { output_dir } = argv;
@@ -21,23 +22,24 @@ function addOutputDirToEnvironment(argv) {
 yargs
   .middleware(addOutputDirToEnvironment)
   .parserConfiguration({
-    'camel-case-expansion': false,
-    'flatten-duplicate-arrays': false
+    "camel-case-expansion": false,
+    "flatten-duplicate-arrays": false
   })
   .option({
     output_dir: {
-      type: 'string',
+      type: "string",
       desc:
-        'Path to the output directory. (Can be set using ENV variable AVL_GTFS_CONFLATION_OUTPUT_DIR.)',
+        "Path to the output directory. (Can be set using ENV variable AVL_GTFS_CONFLATION_OUTPUT_DIR.)",
       default:
         process.env.AVL_GTFS_CONFLATION_OUTPUT_DIR ||
-        join(process.cwd(), 'output')
+        join(process.cwd(), "output")
     }
   })
   .command(raw_gtfs_into_sqlite)
   .command(gtfs_as_geojson)
   .command(gtfs_network)
-  // .command(gtfs_osm_network)
+  .command(gtfs_osm_network)
+  .command(scheduled_bus_traffic)
   .command(output)
   .demandCommand()
   .recommendCommands()
