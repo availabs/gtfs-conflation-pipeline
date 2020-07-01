@@ -50,16 +50,7 @@ class TripTracker {
     this.shape_id = shape_id;
     this.trip_id = trip_id;
 
-    // console.log(shape_id);
     this.segmentedShape = gtfsNetworkDAO.getSegmentedShape(shape_id);
-
-    // console.log(
-    // JSON.stringify(
-    // this.segmentedShape.map(s => _.omit(s, "geometry")),
-    // null,
-    // 4
-    // )
-    // );
 
     this.stops2segs = {};
     this.segs2segs4stops = [];
@@ -398,6 +389,48 @@ function joinSheduledTripsWithShstMatches() {
   );
   createShstMatchesScheduleAggregationsTable(db);
 
+  // NOTE: This depends on the shst matches which are imperfect.
+  //       Improving the matching will improve the avg_tt
+  db.prepare(
+    `
+    CREATE TEMPORARY TABLE tmp_shst_ref_seg_len_ratios (
+      shape_id        TEXT,
+      shape_index     TEXT,
+      shst_reference  TEXT,
+      section_start   REAL,
+      section_end     REAL,
+
+      length_ratio    REAL,
+
+      PRIMARY KEY(shape_id, shape_index, shst_reference, section_start, section_end)
+    ) WITHOUT ROWID; `
+  ).run();
+
+  db.prepare(
+    `
+    INSERT INTO tmp_shst_ref_seg_len_ratios
+      SELECT
+        shape_id,
+        shape_index,
+        shst_reference,
+        section_start,
+        section_end,
+        ( feature_len_km / total_shst_seg_lens ) AS length_ratio
+      FROM ${GTFS_OSM_NETWORK}.tmp_gtfs_network_matches
+        INNER JOIN ${GTFS_OSM_NETWORK}.tmp_shst_match_features
+          USING (shst_reference, section_start, section_end)
+        INNER JOIN (
+          SELECT
+              shape_id,
+              shape_index,
+              SUM(feature_len_km) AS total_shst_seg_lens
+            FROM ${GTFS_OSM_NETWORK}.tmp_gtfs_network_matches
+              INNER JOIN ${GTFS_OSM_NETWORK}.tmp_shst_match_features
+                USING (shst_reference, section_start, section_end)
+            GROUP BY shape_id, shape_index
+        ) AS total_matched_lengths USING (shape_id, shape_index) ;`
+  ).run();
+
   db.prepare(
     `
     INSERT INTO ${SCHEMA}.shst_matches_schedule_aggregations (
@@ -418,36 +451,44 @@ function joinSheduledTripsWithShstMatches() {
           epoch,
 
           ROUND(
-            AVG(tt),
+            AVG( tt * length_ratio ),
             3
           ) AS avg_tt,
+
           COUNT(1) AS count
+
+        -- Includes (shape_id, shape_index)
         FROM ${SCHEMA}.scheduled_travel_times
+
+          -- gets us the potenially many (shst_reference, section_start, section_end)
           INNER JOIN ${GTFS_OSM_NETWORK}.tmp_gtfs_network_matches
             USING (shape_id, shape_index)
-          INNER JOIN ${RAW_GTFS}.trips
-            USING (trip_id)
+
+          INNER JOIN tmp_shst_ref_seg_len_ratios
+            USING (shape_id, shape_index, shst_reference, section_start, section_end )
+
           INNER JOIN (
             SELECT
-                service_id,
+                trip_id,
                 service_dows_each.key AS dow
-              FROM (
-                SELECT
-                    service_id,
-                    json_array(
-                      sunday,
-                      monday,
-                      tuesday,
-                      wednesday,
-                      thursday,
-                      friday,
-                      saturday,
-                      sunday
-                    ) AS dows
-                  FROM ${RAW_GTFS}.calendar
-              ) AS service_dows, json_each(dows) AS service_dows_each
-              WHERE service_dows_each.value = 1
-          ) USING (service_id)
+              FROM trips
+                INNER JOIN (
+                  SELECT
+                      service_id,
+                      json_array(
+                        sunday,
+                        monday,
+                        tuesday,
+                        wednesday,
+                        thursday,
+                        friday,
+                        saturday,
+                        sunday
+                      ) AS dows
+                    FROM ${RAW_GTFS}.calendar
+                ) AS service_dows USING (service_id), json_each(dows) AS service_dows_each
+              WHERE ( service_dows_each.value = 1 )
+          ) trips_dows USING (trip_id)
         GROUP BY shst_reference, section_start, section_end, dow, epoch ;`
   ).run();
 }
@@ -465,19 +506,18 @@ function loadShstRefsGtfsRoutesTable() {
         shst_reference,
         section_start,
         section_end,
-        routes
+        route_id
       )
-      SELECT
+      SELECT DISTINCT
           shst_reference,
           section_start,
           section_end,
-          json_group_array( DISTINCT route_id)
+          route_id
         FROM ${SCHEMA}.scheduled_travel_times
           INNER JOIN ${GTFS_OSM_NETWORK}.tmp_gtfs_network_matches
             USING (shape_id, shape_index)
           INNER JOIN ${RAW_GTFS}.trips
-            USING (trip_id)
-        GROUP BY shst_reference, section_start, section_end; `
+            USING (trip_id) ;`
   ).run();
 }
 
@@ -489,8 +529,8 @@ function load() {
   try {
     db.exec("BEGIN");
 
-    loadTripStopTimes();
-    joinSheduledTripsWithShstMatches();
+    // loadTripStopTimes();
+    // joinSheduledTripsWithShstMatches();
     loadShstRefsGtfsRoutesTable();
 
     db.exec("COMMIT;");

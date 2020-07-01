@@ -38,9 +38,9 @@ const createShstRefsToGtfsRoutesTable = db =>
       shst_reference  TEXT,
       section_start   REAL,
       section_end     REAL,
-      routes          TEXT, -- JSON string[]
+      route_id        TEXT,
 
-      PRIMARY KEY (shst_reference, section_start, section_end)
+      PRIMARY KEY (shst_reference, section_start, section_end, route_id)
     ) WITHOUT ROWID ;
   `);
 
