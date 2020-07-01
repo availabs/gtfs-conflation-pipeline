@@ -437,6 +437,7 @@ function joinSheduledTripsWithShstMatches() {
         shst_reference,
         section_start,
         section_end,
+        route_id,
         dow,
         epoch,
         avg_tt,
@@ -446,6 +447,8 @@ function joinSheduledTripsWithShstMatches() {
           shst_reference,
           section_start,
           section_end,
+
+          route_id,
 
           dow,
           epoch,
@@ -469,6 +472,7 @@ function joinSheduledTripsWithShstMatches() {
 
           INNER JOIN (
             SELECT
+                route_id,
                 trip_id,
                 service_dows_each.key AS dow
               FROM trips
@@ -489,7 +493,7 @@ function joinSheduledTripsWithShstMatches() {
                 ) AS service_dows USING (service_id), json_each(dows) AS service_dows_each
               WHERE ( service_dows_each.value = 1 )
           ) trips_dows USING (trip_id)
-        GROUP BY shst_reference, section_start, section_end, dow, epoch ;`
+        GROUP BY shst_reference, section_start, section_end, route_id, dow, epoch ;`
   ).run();
 }
 
@@ -529,8 +533,8 @@ function load() {
   try {
     db.exec("BEGIN");
 
-    // loadTripStopTimes();
-    // joinSheduledTripsWithShstMatches();
+    loadTripStopTimes();
+    joinSheduledTripsWithShstMatches();
     loadShstRefsGtfsRoutesTable();
 
     db.exec("COMMIT;");

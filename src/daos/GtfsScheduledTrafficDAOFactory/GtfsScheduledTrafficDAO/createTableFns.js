@@ -21,13 +21,15 @@ const createShstMatchesScheduleAggregationsTable = db =>
       section_start   REAL,
       section_end     REAL,
 
+      route_id        TEXT,
+
       dow             INTEGER,
       epoch           INTEGER,
 
       avg_tt          REAL,
       count           INTEGER,
 
-      PRIMARY KEY (shst_reference, section_start, section_end, dow, epoch)
+      PRIMARY KEY (shst_reference, section_start, section_end, route_id, dow, epoch)
     ) WITHOUT ROWID ;
   `);
 
