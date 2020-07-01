@@ -1,3 +1,5 @@
+/* eslint-disable jsdoc/require-jsdoc */
+
 const { sync: mkdirpSync } = require("mkdirp");
 
 const Database = require("better-sqlite3");
