@@ -1,4 +1,4 @@
-const OutputDao = require('./OutputDao');
+const OutputDao = require("./OutputDao");
 
 // DAOs are singletons.
 let dao;

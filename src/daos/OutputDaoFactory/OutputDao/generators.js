@@ -1,18 +1,21 @@
 /* eslint-disable no-restricted-syntax, jsdoc/require-jsdoc */
 
-const turf = require('@turf/turf');
-const gdal = require('gdal');
+const { existsSync } = require("fs");
+
+const turf = require("@turf/turf");
+const gdal = require("gdal");
+const _ = require("lodash");
 
 const {
   GEOJSON_GTFS,
   GTFS_NETWORK
-} = require('../../../constants/databaseSchemaNames');
+} = require("../../../constants/databaseSchemaNames");
 
 // const supportedLayers = [GEOJSON_GTFS, GTFS_NETWORK];
 const supportedLayers = [GEOJSON_GTFS];
 
-const GeoJsonGtfsDAOFactory = require('../../GeoJsonGtfsDAOFactory');
-const GtfsNetworkDAOFactory = require('../../GtfsNetworkDAOFactory');
+const GeoJsonGtfsDAOFactory = require("../../GeoJsonGtfsDAOFactory");
+const GtfsNetworkDAOFactory = require("../../GtfsNetworkDAOFactory");
 
 const wgs84 = gdal.SpatialReference.fromEPSG(4326);
 
@@ -26,19 +29,58 @@ const addGeoJsonStopsLayer = dataset => {
     gdal.Point
   );
 
-  const fieldDefinitionPairs = [
-    ['stop_id', gdal.OFTString],
-    ['stop_code', gdal.OFTString],
-    ['stop_name', gdal.OFTString],
-    ['stop_desc', gdal.OFTString],
-    ['stop_lat', gdal.OFTReal],
-    ['stop_lon', gdal.OFTReal],
-    ['zone_id', gdal.OFTString],
-    ['stop_url', gdal.OFTString],
-    ['location_type', gdal.OFTInteger],
-    ['stop_timezone', gdal.OFTString],
-    ['wheelchair_boarding', gdal.OFTInteger]
-  ];
+  const propDefs = {
+    stop_id: {
+      fieldName: "stop_id",
+      type: gdal.OFTString
+    },
+    stop_code: {
+      fieldName: "stop_code",
+      type: gdal.OFTString
+    },
+    stop_name: {
+      fieldName: "stop_name",
+      type: gdal.OFTString
+    },
+    stop_desc: {
+      fieldName: "stop_desc",
+      type: gdal.OFTString
+    },
+    stop_lat: {
+      fieldName: "stop_lat",
+      type: gdal.OFTReal
+    },
+    stop_lon: {
+      fieldName: "stop_lon",
+      type: gdal.OFTReal
+    },
+    zone_id: {
+      fieldName: "zone_id",
+      type: gdal.OFTString
+    },
+    stop_url: {
+      fieldName: "stop_url",
+      type: gdal.OFTString
+    },
+    location_type: {
+      fieldName: "loc_type",
+      type: gdal.OFTString
+    },
+    stop_timezone: {
+      fieldName: "stop_tmzn",
+      type: gdal.OFTString
+    },
+    wheelchair_boarding: {
+      fieldName: "wchair_bdn",
+      type: gdal.OFTReal
+    }
+  };
+
+  _.forEach(propDefs, ({ type, fieldName }) =>
+    addFieldToLayer(layer, fieldName, type)
+  );
+
+  const fieldDefinitionPairs = [];
 
   for (const [name, type] of fieldDefinitionPairs) {
     addFieldToLayer(layer, name, type);
@@ -51,9 +93,17 @@ const addGeoJsonStopsLayer = dataset => {
   for (const geojsonPoint of iter) {
     const gdalFeature = new gdal.Feature(layer);
 
-    Object.keys(geojsonPoint.properties).forEach(prop =>
-      gdalFeature.fields.set(prop, geojsonPoint.properties[prop])
-    );
+    Object.keys(geojsonPoint.properties).forEach(prop => {
+      if (!propDefs[prop]) {
+        return;
+      }
+
+      const { fieldName } = propDefs[prop];
+
+      const v = geojsonPoint.properties[prop];
+
+      gdalFeature.fields.set(fieldName, _.isNil(v) ? null : JSON.stringify(v));
+    });
 
     const [lon, lat] = turf.getCoord(geojsonPoint);
     const point = new gdal.Point(lon, lat);
@@ -71,7 +121,7 @@ const addGeoJsonShapesLayer = dataset => {
     gdal.LineString
   );
 
-  addFieldToLayer(layer, 'shape_id', gdal.OFTString);
+  addFieldToLayer(layer, "shape_id", gdal.OFTString);
 
   const dao = GeoJsonGtfsDAOFactory.getDAO();
 
@@ -80,7 +130,7 @@ const addGeoJsonShapesLayer = dataset => {
   for (const geojsonLineString of iter) {
     const gdalFeature = new gdal.Feature(layer);
 
-    gdalFeature.fields.set('shape_id', geojsonLineString.properties.id);
+    gdalFeature.fields.set("shape_id", geojsonLineString.properties.id);
 
     const lineString = new gdal.LineString();
 
@@ -102,13 +152,15 @@ const addGtfsNetworkLayer = dataset => {
   );
 
   const fieldDefinitionPairs = [
-    ['shape_id', gdal.OFTString],
-    ['shape_idx', gdal.OFTInteger],
-    ['from_stops', gdal.OFTString],
-    ['to_stops', gdal.OFTString],
-    ['start_dist', gdal.OFTReal],
-    ['stop_dist', gdal.OFTReal]
+    ["shape_id", gdal.OFTString],
+    ["shape_idx", gdal.OFTInteger],
+    ["from_stops", gdal.OFTString],
+    ["to_stops", gdal.OFTString],
+    ["start_dist", gdal.OFTReal],
+    ["stop_dist", gdal.OFTReal]
   ];
+
+  const definedFields = fieldDefinitionPairs.map(([field]) => field);
 
   for (const [name, type] of fieldDefinitionPairs) {
     addFieldToLayer(layer, name, type);
@@ -123,14 +175,18 @@ const addGtfsNetworkLayer = dataset => {
 
     Object.keys(geojsonLineString.properties).forEach(prop => {
       const fieldName = prop
-        .replace(/^shape_index$/, 'shape_idx')
-        .replace(/^from_stop_ids$/, 'from_stops')
-        .replace(/^to_stop_ids$/, 'to_stops');
+        .replace(/^shape_index$/, "shape_idx")
+        .replace(/^from_stop_ids$/, "from_stops")
+        .replace(/^to_stop_ids$/, "to_stops");
 
-      gdalFeature.fields.set(
-        fieldName,
-        `${geojsonLineString.properties[prop]}`
-      );
+      if (definedFields.includes(fieldName)) {
+        const v = geojsonLineString.properties[prop];
+
+        gdalFeature.fields.set(
+          fieldName,
+          _.isNil(v) ? null : JSON.stringify(v)
+        );
+      }
     });
 
     const lineString = new gdal.LineString();
@@ -161,10 +217,16 @@ function outputShapefile(output_file) {
   // }
 
   if (!output_file) {
-    throw new Error('The output_file parameter is required');
+    console.error("The output_file parameter is required");
+    process.exit(1);
   }
 
-  const dataset = gdal.open(output_file, 'w', 'ESRI Shapefile');
+  if (existsSync(output_file)) {
+    console.error(`You must first remove the output file ${output_file}.`);
+    process.exit(1);
+  }
+
+  const dataset = gdal.open(output_file, "w", "ESRI Shapefile");
 
   if (supportedLayers.includes(GEOJSON_GTFS)) {
     addGeoJsonStopsLayer(dataset);
