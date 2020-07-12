@@ -18,14 +18,14 @@ const N = 20;
 // If len diff ratio exceeds LEN_DIFF_R_ACCEPT_TH, do not accept it
 const BEARING_RANGE = 15; // degrees
 const SNAP_DIST_THOLD = 33; // meters
-const SIMILARITY_THOLD = 0.008;
+const SIMILARITY_THOLD = 0.01;
 
 const getOSRM = memoizeOne(osrmDir => {
   try {
     const osrmFile = join(osrmDir, "graph.xml.osrm");
 
     if (!existsSync(osrmFile)) {
-      console.log("graph.xml.osrm file does not exist");
+      console.error("graph.xml.osrm file does not exist");
       return null;
     }
 

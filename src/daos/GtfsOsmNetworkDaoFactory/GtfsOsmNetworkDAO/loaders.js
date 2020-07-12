@@ -33,6 +33,8 @@ async function load() {
 
       CREATE TABLE IF NOT EXISTS ${SCHEMA}.tmp_shst_match_features (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        shape_id        TEXT,
+        shape_index     INTEGER,
         shst_reference  TEXT,
         section_start   REAL,
         section_end     REAL,
@@ -40,39 +42,21 @@ async function load() {
         feature_len_km  REAL,
         feature         TEXT,
         
-        UNIQUE (shst_reference, section_start, section_end)
+        UNIQUE (shape_id, shape_index, shst_reference, section_start, section_end)
       ) ;
-
-      CREATE TABLE IF NOT EXISTS ${SCHEMA}.tmp_gtfs_network_matches (
-        shape_id          TEXT,
-        shape_index       INTEGER,
-        shst_reference    TEXT,
-        section_start     REAL,
-        section_end       REAL,
-
-        PRIMARY KEY (shape_id, shape_index, shst_reference, section_start, section_end)
-      ) WITHOUT ROWID;
   `);
 
     const insertShstMatchStmt = xdb.prepare(`
       INSERT OR IGNORE INTO tmp_shst_match_features (
+        shape_id,
+        shape_index,
         shst_reference,
         section_start,
         section_end,
         osrm_dir,
         feature_len_km,
         feature
-      ) VALUES (?, ?, ?, ?, ?, ?) ;
-    `);
-
-    const insertGtfsShapeSegMatchStmt = xdb.prepare(`
-      INSERT OR IGNORE INTO tmp_gtfs_network_matches (
-        shape_id,
-        shape_index,
-        shst_reference,
-        section_start,
-        section_end
-      ) VALUES (?, ?, ?, ?, ?) ;
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ;
     `);
 
     const gtfsNetworkDAO = GtfsNetworkDAOFactory.getDAO();
@@ -93,26 +77,20 @@ async function load() {
 
       roundGeometryCoordinates(matchFeature);
 
-      const start = _.round(section_start, PRECISION);
-      const end = _.round(section_end, PRECISION);
+      const sectionStartRounded = _.round(section_start, PRECISION);
+      const sectionEndRounded = _.round(section_end, PRECISION);
 
       const featureLenKm = _.round(turf.length(matchFeature), 6);
 
       insertShstMatchStmt.run([
-        `${shstReferenceId}`,
-        `${start}`,
-        `${end}`,
-        `${osrm_dir}`,
-        `${featureLenKm}`,
-        `${JSON.stringify(matchFeature)}`
-      ]);
-
-      insertGtfsShapeSegMatchStmt.run([
         `${pp_shape_id}`,
         `${pp_shape_index}`,
         `${shstReferenceId}`,
-        `${start}`,
-        `${end}`
+        `${sectionStartRounded}`,
+        `${sectionEndRounded}`,
+        `${osrm_dir}`,
+        `${featureLenKm}`,
+        `${JSON.stringify(matchFeature)}`
       ]);
     }
 

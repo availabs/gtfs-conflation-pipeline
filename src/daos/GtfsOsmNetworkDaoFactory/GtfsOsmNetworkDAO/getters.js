@@ -27,15 +27,24 @@ function getShstMatchesForShapes(shapeIds) {
   // https://github.com/JoshuaWise/better-sqlite3/issues/283#issuecomment-511046320
   const query = db.prepare(`
     SELECT
-        match_feature
-      FROM ${SCHEMA}.tmp_raw_shst_matches
-      WHERE ( shape_id IN (${shapeIds.map(() => "?")}) ) ;
+        feature
+      FROM ${SCHEMA}.tmp_shst_match_features
+      WHERE (
+        json_extract(feature, '$.properties.pp_shape_id')
+          IN (${shapeIds.map(() => "?")})
+      ) ;
   `);
+
+  console.log(JSON.stringify({ _shapeIds }, null, 4));
 
   const result = query
     .raw()
     .all(_shapeIds)
     .map(([feature]) => JSON.parse(feature));
+
+  console.log(JSON.stringify(result, null, 4));
+
+  const seenCompositeKeys = new Set();
 
   const byByShapeIdxShapeId = result.reduce((acc, feature) => {
     // Remove the gis* properties that aren't useful.
@@ -47,16 +56,23 @@ function getShstMatchesForShapes(shapeIds) {
       properties: { pp_shape_id, pp_shape_index, pp_match_index }
     } = feature;
 
+    const compositKey = `${pp_shape_id}|${pp_shape_index}|${pp_match_index}`;
+
+    if (seenCompositeKeys.has(compositKey)) {
+      throw new Error("compositKeys are not UNIQUE");
+    }
+
+    seenCompositeKeys.add(compositKey);
+
     acc[pp_shape_id] = acc[pp_shape_id] || {};
     acc[pp_shape_id][pp_shape_index] = acc[pp_shape_id][pp_shape_index] || [];
 
-    // acc[pp_shape_id][pp_shape_index][pp_match_index] = feature
     acc[pp_shape_id][pp_shape_index][pp_match_index] = feature;
 
     return acc;
   }, {});
 
-  // console.log(JSON.stringify(byByShapeIdxShapeId, null, 4))
+  console.log(JSON.stringify(byByShapeIdxShapeId, null, 4));
 
   return byByShapeIdxShapeId;
 }
@@ -67,11 +83,12 @@ function getMatchedMap() {
     SELECT
       (
         '[' ||
-        group_concat( DISTINCT match_feature ) ||
+        group_concat( DISTINCT feature ) ||
         ']'
       ) AS shst_ref_fragments
-      FROM ${SCHEMA}.tmp_raw_shst_matches
-      GROUP BY json_extract(match_feature, '$.properties.shstReferenceId')
+      FROM ${SCHEMA}.tmp_shst_match_features
+        INNER JOIN ${SCHEMA}.tmp_gtfs_network_matches USING (shst_reference, section_start, section_end)
+      GROUP BY json_extract(feature, '$.properties.shstReferenceId')
   `);
 
   const geoComparator = (a, b) =>

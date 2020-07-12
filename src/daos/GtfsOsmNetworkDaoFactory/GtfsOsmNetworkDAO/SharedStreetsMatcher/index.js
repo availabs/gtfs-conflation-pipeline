@@ -7,14 +7,36 @@ const BATCH_SIZE = 25;
 
 const shstMatchFeatures = require("./shstMatchFeatures");
 
-const initializeUnmatchedFeaturesArray = features =>
-  Array.isArray(features) && features.length
+const initializeUnmatchedFeaturesArray = features => {
+  const seenIds = new Set();
+
+  return Array.isArray(features) && features.length
     ? features.reduce((acc, feature) => {
         const {
           id,
           properties,
           geometry: { coordinates }
         } = feature;
+
+        const { id: propId } = properties;
+
+        if (id && propId && id !== propId) {
+          throw new Error("INVARIANT BROKEN: Feature id !== properties.id");
+        }
+
+        const featureId = id || propId;
+
+        if (featureId === undefined) {
+          throw new Error(
+            "An id must be defined on the feature or in its properties."
+          );
+        }
+
+        if (seenIds.has(featureId)) {
+          throw new Error("INVARIANT BROKEN: Feature IDs are not UNIQUE");
+        }
+
+        seenIds.add(featureId);
 
         // If there are no coordinates, can't match it to OSM.
         if (!(Array.isArray(coordinates) && coordinates.length)) {
@@ -25,23 +47,12 @@ const initializeUnmatchedFeaturesArray = features =>
         // It does perserve the input feature properties.
         // Therefore, we need to ensure that there is an "id"
         //   in the feature properties.
-        if (properties.id !== undefined) {
-          // No need to add id to properties
-          acc.push(feature);
-        } else {
-          // If there is no id, we cannot proceed
-          if (id === undefined) {
-            throw new Error(
-              "An id must be defined on the feature or in its properties."
-            );
-          }
-          // add id to feature properties without mutating input feature
-          acc.push({ ...feature, properties: { ...properties, id } });
-        }
+        acc.push({ ...feature, properties: { ...properties, id: featureId } });
 
         return acc;
       }, [])
     : null;
+};
 
 async function match(features) {
   const unmatchedFeatures = initializeUnmatchedFeaturesArray(features);
@@ -52,6 +63,7 @@ async function match(features) {
 }
 
 const removeOverlaps = matches => {
+  // Group the shst matches by GTFS network segment
   const matchesByTargetMapId = matches.reduce((acc, matchFeature) => {
     const {
       properties: { pp_id }
@@ -75,56 +87,51 @@ const removeOverlaps = matches => {
   for (let i = 0; i < targetMapIds.length; ++i) {
     const tmId = targetMapIds[i];
 
-    // sorth the match features array in descending order by coord arr len
+    // sort the match features array in descending order by coord arr len
     matchesByTargetMapId[tmId].sort(
       (a, b) =>
+        // length of the geometry coordinates array descending
         turf.getCoords(b).length - turf.getCoords(a).length ||
+        // prefer matches that are not pp_osrm_assisted
+        //   (if not assisted, pp_osrm_assisted = 0, otherwise 1)
         a.properties.pp_osrm_assisted - b.properties.pp_osrm_assisted
     );
 
+    // for this target map segment
     const matchesByShstRef = matchesByTargetMapId[tmId].reduce(
       (acc, matchFeature) => {
         const {
-          properties: { shstReferenceId, pp_osrm_assisted }
+          properties: { shstReferenceId }
         } = matchFeature;
 
+        // If there are other matches for this shstReferenceId,
+        //   we keep only those with unique coordinates.
         if (acc[shstReferenceId]) {
-          const otherFeatures = acc[shstReferenceId];
-
           const coords = turf.getCoords(matchFeature);
-          const coordsRounded = _(coords)
-            .flattenDeep()
-            .map(c => _.round(c, 5))
-            .chunk(2)
-            .value();
 
-          if (
-            !otherFeatures.some(other => {
-              const {
-                properties: { pp_osrm_assisted: otherOsrmAssisted }
-              } = other;
-              const otherCoords = turf.getCoords(other);
-
-              if (!pp_osrm_assisted && !otherOsrmAssisted) {
-                return _.differenceWith(coords, otherCoords, _.isEqual);
-              }
-
-              const otherCoordsRounded = _(otherCoords)
-                .flattenDeep()
-                .map(c => _.round(c, 5))
-                .chunk(2)
-                .value();
-
-              return _.differenceWith(
-                coordsRounded,
-                otherCoordsRounded,
+          // Are the coordinates of this matchFeature a subset of the
+          //   coordinates of some other matchFeature with the same shstReferenceId?
+          const featureIsOverlappedByOther = acc[shstReferenceId].some(
+            other => {
+              const numCoordsNotInOther = _.differenceWith(
+                coords,
+                turf.getCoords(other),
                 _.isEqual
-              );
-            })
-          ) {
-            otherFeatures.push(matchFeature);
+              ).length;
+
+              const matchCompletelyOverlapped = numCoordsNotInOther === 0;
+
+              return matchCompletelyOverlapped;
+            }
+          );
+
+          // If there are unique coords in this match, add it to the
+          //   list of matches for this shstReferenceId.
+          if (!featureIsOverlappedByOther) {
+            acc[shstReferenceId].push(matchFeature);
           }
         } else {
+          // First instance for this shstReferenceId
           acc[shstReferenceId] = [matchFeature];
         }
         return acc;
@@ -140,7 +147,7 @@ const removeOverlaps = matches => {
 
 async function* matchSegmentedShapeFeatures(featuresIterator) {
   const batch = [];
-  let bboxPoly = null;
+  // let bboxPoly = null;
 
   for (const feature of featuresIterator) {
     batch.push(feature);
@@ -170,7 +177,7 @@ async function* matchSegmentedShapeFeatures(featuresIterator) {
         }
       }
 
-      bboxPoly = null;
+      // bboxPoly = null;
       batch.length = 0;
     }
   }
