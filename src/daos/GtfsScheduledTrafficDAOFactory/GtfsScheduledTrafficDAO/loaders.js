@@ -1,5 +1,13 @@
 /* eslint-disable no-restricted-syntax, jsdoc/require-jsdoc, no-continue */
 
+// https://developers.google.com/transit/gtfs/reference#shapestxt
+//
+// Shapes describe the path that a vehicle travels along a route alignment,
+// and are defined in the file shapes.txt. Shapes are associated with Trips,
+// and consist of A SEQUENCE OF POINTS THROUGH WHICH THE VEHICLE PASSES IN ORDER.
+//
+// 🎉🎉🎉 The shapes are directional. 🎉🎉🎉
+
 const assert = require("assert");
 
 const _ = require("lodash");
@@ -11,128 +19,199 @@ const logger = require("../../../services/Logger");
 const RawGtfsDAOFactory = require("../../RawGtfsDAOFactory");
 const GtfsNetworkDAOFactory = require("../../GtfsNetworkDAOFactory");
 
-const {
-  RAW_GTFS,
-  GTFS_OSM_NETWORK
-} = require("../../../constants/databaseSchemaNames");
-
+const { RAW_GTFS } = require("../../../constants/databaseSchemaNames");
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
-const {
-  createScheduledTravelTimesTable,
-  createShstMatchesScheduleAggregationsTable,
-  createShstRefsToGtfsRoutesTable
-} = require("./createTableFns");
-
-// https://developers.google.com/transit/gtfs/reference#shapestxt
-//
-// Shapes describe the path that a vehicle travels along a route alignment,
-// and are defined in the file shapes.txt. Shapes are associated with Trips,
-// and consist of A SEQUENCE OF POINTS THROUGH WHICH THE VEHICLE PASSES IN ORDER.
-//
-// 🎉🎉🎉 The shapes are directional. 🎉🎉🎉
+const { createScheduledTransitTrafficTable } = require("./createTableFns");
 
 const MINS_PER_HOUR = 60;
 const SECS_PER_MIN = 60;
-const SECS_PER_EPOCH = 5 /* min */ * SECS_PER_MIN;
 
+// HH:MM:SS => seconds into day
 const getTimestamp = time => {
-  const [h, m, s] = time.split(":");
-  return (+h * MINS_PER_HOUR + +m) * SECS_PER_MIN + +s;
+  const [h, m, s] = time.split(":").map(u => +u);
+  // ((hrs * min/hr) + mins) * sec/min + secs => seconds into day
+  return (h * MINS_PER_HOUR + m) * SECS_PER_MIN + s;
 };
 
-const getEpoch = timestamp => Math.floor(timestamp / SECS_PER_EPOCH);
+function initializeDataStructures() {
+  // this.stop2segsLookUp = new Map();
+
+  // NOTE: We keep the possible [null] from_stop_ids array
+  //       because we need the segmentedShape and fromStops
+  //       arrays to be parallel.
+  const orderedStopsAlongShape = this.segmentedShape.map(
+    ({ properties: { from_stop_ids } }) => from_stop_ids
+  );
+
+  // All from_stops are the preceding segment's to_stops.
+  //   Therefore, the orderedStopsAlongShape includes all to_stops
+  //     EXCEPT the final segment's to_stops since there is
+  //     no subsequent segment for which they are the from_stops.
+  //
+  // When snapping the stops to the shapes, sometimes a final stop
+  //   does not snap to the shape's final geometry coordinate.
+  // In this case, to preserve the full shape geometry,
+  //   we add a dummy stop with a NULL stop_id ([null] as to_stops).
+  // We are not interested in those dummy stops when tracking trips
+  //   so we remove them from consideration here.
+  const finalStopIds = _.get(_.last(this.segmentedShape), [
+    "properties",
+    "to_stop_ids"
+  ]).filter(s => s !== null);
+
+  // Because we filtered out the NULL stops, we know that
+  //   the finalStopIds represent real transit network stops.
+  if (!_.isEmpty(finalStopIds)) {
+    // NOTE: if this push happens,
+    //       the orderedStopsAlongShape array length
+    //       equals the segmentedShape array length + 1
+    orderedStopsAlongShape.push(finalStopIds);
+  }
+
+  this.stops2segsFifo = {};
+  this.segs2segs4stops = [];
+  // For each stop-to-stop segment in the GTFS shape
+  for (let i = 0; i < orderedStopsAlongShape.length; ++i) {
+    const stop_ids = orderedStopsAlongShape[i];
+
+    // Some stops are considered to represent the same transit network node
+    //   because they are within a distance threshold of each other.
+    // These "network-equivalent" stop ids co-occur in the stop_ids list.
+    for (let j = 0; j < stop_ids.length; ++j) {
+      const s = stop_ids[j];
+      // console.log(s);
+
+      // Since a stop_id may occur multiple times in a shape,
+      //   we need to keep a list of all segment indices
+      //   for which this stop is a from_node.
+      this.stops2segsFifo[s] = this.stops2segsFifo[s] || [];
+      this.stops2segsFifo[s].push(i);
+
+      // Because a segment index may occur under multiple stops,
+      //   to facilitate clean up any references to a segment after
+      //   we traverse it, we keep a lookup datastructure of
+      //     segment index to all stop2seg arrays containing that index.
+      this.segs2segs4stops[i] = this.segs2segs4stops[i] || new Set();
+      // NOTE: Using set, so idempotent.
+      this.segs2segs4stops[i].add(this.stops2segsFifo[s]);
+
+      // So we can get the stop_id from that stop's stops2segsFifo array
+      // this.stop2segsLookUp.set(this.stops2segsFifo[s], s);
+    }
+  }
+
+  // Reverse the stops2segsFifo arrays so they are FIFOs when using pop().
+  Object.keys(this.stops2segsFifo).forEach(s =>
+    this.stops2segsFifo[s].reverse()
+  );
+}
 
 class TripTracker {
   constructor({ trip_id, shape_id }) {
     const gtfsNetworkDAO = GtfsNetworkDAOFactory.getDAO();
 
-    this.shape_id = shape_id;
     this.trip_id = trip_id;
 
+    // NOTE: a shape may contain more stops than the trip
+    //       because some trips along a shape skip stops.
+    this.shape_id = shape_id;
+
+    // GeoJSON[]
     this.segmentedShape = gtfsNetworkDAO.getSegmentedShape(shape_id);
 
-    this.stops2segs = {};
-    this.segs2segs4stops = [];
-    this.stop2segsLookUp = new Map();
-
-    for (let i = 0; i < this.segmentedShape.length; ++i) {
-      const seg = this.segmentedShape[i];
-      const {
-        properties: { from_stop_ids }
-      } = seg;
-
-      // Some stops are considered to represent the same transit network node
-      //   because they are within a distance threshold of each other.
-      // These "network-equivalent" stop ids co-occur in the from_stop_ids list.
-      for (let j = 0; j < from_stop_ids.length; ++j) {
-        const s = from_stop_ids[j];
-        // console.log(s);
-
-        // Since a stop_id may occur multiple times in a shape,
-        //   we need to keep a list of all segment indices for a stop.
-        this.stops2segs[s] = this.stops2segs[s] || [];
-        this.stops2segs[s].push(i);
-
-        // To clean up any references to a segment after we traverse it,
-        //   for each
-        this.segs2segs4stops[i] = this.segs2segs4stops[i] || new Set();
-        // Set, so idempotent
-        this.segs2segs4stops[i].add(this.stops2segs[s]);
-
-        this.stop2segsLookUp.set(this.stops2segs[s], s);
-      }
+    // TODO: DOCUMENT THIS INVARIANT
+    //
+    //  INVARIANT: No trip is a simple loop with two stops,
+    //             where the origin and the destination are the same.
+    //
+    //       This trip tracking logic would break if the schedule is simply
+    //       a loop from the same stop as origin and destination.
+    //
+    //       Conceivable if all stops along the way are unscheduled.
+    //
+    if (this.segmentedShape.length < 2) {
+      throw new Error("INVARIANT BROKEN: The trip shape is a simple loop.");
     }
 
-    const lastSegmentToStopIds = _.get(_.last(this.segmentedShape), [
-      "properties",
-      "to_stop_ids"
-    ]).filter(s => s !== null);
-
-    for (let i = 0; i < lastSegmentToStopIds.length; ++i) {
-      const dummyIdx = this.segmentedShape.length;
-
-      const s = lastSegmentToStopIds[i];
-      // console.log("*".repeat(30));
-      // console.log(JSON.stringify({ dummyIdx, lastSegmentToStopIds }, null, 4));
-      // console.log("*".repeat(30));
-
-      // Since a stop_id may occur multiple times in a shape,
-      //   we need to keep a list of all segment indices for a stop.
-      this.stops2segs[s] = this.stops2segs[s] || [];
-      this.stops2segs[s].push(dummyIdx);
-
-      // To clean up any references to a segment after we traverse it,
-      //   for each
-      this.segs2segs4stops[dummyIdx] =
-        this.segs2segs4stops[dummyIdx] || new Set();
-
-      // Set, so idempotent
-      this.segs2segs4stops[dummyIdx].add(this.stops2segs[s]);
-    }
-
-    // Make the stop -> segIndex lists FIFOs so we can use pop().
-    Object.keys(this.stops2segs).forEach(s => this.stops2segs[s].reverse());
-
-    this.stops2segsClone = _.cloneDeep(this.stops2segs);
-    this.segs2segs4stopsClone = this.segs2segs4stops.map(s => [...s]);
-
+    // observations keeps the record of all stops along the trip.
     this.observations = [];
-    this.prevStopTimeEntry = null;
 
-    // console.log(
-    // JSON.stringify(
-    // {
-    // segmentedShape: this.segmentedShape.map(s => _.omit(s, "geometry"))
-    // },
-    // null,
-    // 4
-    // )
-    // );
+    initializeDataStructures.call(this);
   }
 
+  getArrivalSegmentIndex(stop_id) {
+    // The FIFO of shape segments for which this stop is the start node.
+    const segIndicesForArrivalStop = this.stops2segsFifo[stop_id];
+
+    // INVARIANT: The shape segment's from_stop_ids or to_stop_ids
+    //            COMPLETELY represent the trip's stop-to-stop traversal
+    //            of the segmented shape.
+    if (
+      // We encounted a stop_id that was NOT in the shapes from_stop_ids or to_stop_ids.
+      !Array.isArray(segIndicesForArrivalStop) ||
+      // OR the FIFO of shape segments for which this stop is the start node is empty.
+      //   (The stop was visited more times than recorded in from_stop_ids or to_stop_ids.)
+      segIndicesForArrivalStop.length === 0
+    ) {
+      // We throw an error because the trip tracking algorithm's assumptions are unsound.
+      throw new Error(
+        `INVARIANT BROKEN: No remaining segments for the stop id ${stop_id}`
+      );
+    }
+
+    // Departure segment index is the previous stop time entry's arrive segment index.
+    const { dptrSegIdx = 0 } = this.prevStopTimeEntry || {};
+
+    // The next instance segment index for this stop id in the shape chain.
+    //   Defensively, we peek here. We DO NOT pop because of two possible cases:
+    //     1. The stop_times table includes a duplicate entry for the stop
+    //     2. The stop shares the geospatial point/segment start node
+    //        with another stop.
+    //
+    //   In other words, we play defense against inaccurrate data in the
+    //     GTFS stops table and/or stop_times table.
+    //
+    //   If the next stop encountered has a higher segment index, this current
+    //     segment index is removed from the FIFOs in the loop below.
+    //   If the next stop encountered has the same segment index, we can handle it
+    //     since the arvlSegIdx is still available.
+    //
+    const arvlSegIdx = _.last(this.stops2segsFifo[stop_id]);
+
+    // Remove all references for segments up to, but not including
+    //   this arrival stop segment index.
+    //
+    // We MUST do this cleanup so that
+    //   for all stops skipped between the previous stop_time row and this stop_time row,
+    //     those skipped stops' stops2segsFifos will have at their heads
+    //     the correct (further along) segment index in case the bus trip visits
+    //     the skipped stop at a later time along its journey.
+    for (let i = dptrSegIdx; i < arvlSegIdx; ++i) {
+      this.segs2segs4stops[i].forEach(stops2segsFifo => {
+        const fifoHead = stops2segsFifo.pop();
+
+        // Make sure our datastructures are being correctly maintained.
+        if (fifoHead !== i) {
+          throw new Error("The stops2segsFifos are incorrect.");
+        }
+      });
+    }
+
+    return arvlSegIdx;
+  }
+
+  // Called for each entry in the stop_times table in sequence order.
   handleStopTimesEntry({ stop_id, arrival_time, departure_time }) {
-    // console.log("=".repeat(30));
+    // As we receive entries from the stop_times table,
+    //   we need info from the previous entry to determine
+    //   distance traveled and time elapsed.
+
+    // Get the departure info from the previous stop time entry
+    const { dptrSegIdx = 0, dptrTS = null } = this.prevStopTimeEntry || {};
+
+    const arvlSegIdx = this.getArrivalSegmentIndex(stop_id);
+    const arvlTS = getTimestamp(arrival_time);
 
     if (
       !(
@@ -145,200 +224,68 @@ class TripTracker {
       );
     }
 
-    // console.log(JSON.stringify(this.stops2segs, null, 4));
-
-    const segIndicesForArrivalStop = this.stops2segs[stop_id];
-
-    if (
-      !Array.isArray(segIndicesForArrivalStop) ||
-      segIndicesForArrivalStop.length === 0
-    ) {
-      console.log(
-        JSON.stringify(
-          {
-            // segmentedShape: this.segmentedShape.map(s => _.omit(s, "geometry")),
-            trip_id: this.trip_id,
-            stop_id,
-            arrival_time,
-            departure_time
-            // stops2segs: this.stops2segs,
-            // stops2segsClone: this.stops2segsClone,
-            // segs2segs4stopsClone: this.segs2segs4stopsClone
-          },
-          null,
-          4
-        )
-      );
-
-      throw new Error(
-        `INVARIANT BROKEN: No remaining segments for the stop id ${stop_id}`
-      );
-    }
-
-    const { dptrSegIdx = 0, dptrTS = null } = this.prevStopTimeEntry || {};
-
-    // The next instance segment index for this stop id in the shape chain.
-    // Because multiple stop ids (that identify the same network node) may
-    //   reference this segment, wait to remove the seg reference so ref
-    //   removals can happen in one place.
-    const arvlSegIdx = _.last(this.stops2segs[stop_id]);
-
-    // The departure segment (inclusive) to arrival segment (non-inclusive).
-    // Buses ENTER segments ONLY when moving through them.
-    const traversedSegsChain = this.segmentedShape.slice(
-      dptrSegIdx,
-      arvlSegIdx
-    );
-
     // If we have a traversal
-    if (this.prevStopTimeEntry !== null) {
-      const arvlTS = getTimestamp(arrival_time);
-
+    if (!_.isEmpty(this.prevStopTimeEntry)) {
       const travelTimeSecs = arvlTS - dptrTS;
 
+      // Verify invariant
       if (travelTimeSecs < 0) {
         throw new Error(
           "departure_time -> arrival_time must be monotonically increasing."
         );
       }
 
-      // TODO: Should be using the lengths from conflation output
-      //       because OSM is higher resolution and more accurate.
-      //       Make the switch once conflation output is improved.
-      const segLens = traversedSegsChain.map(
-        ({ properties: { start_dist, stop_dist } }) => stop_dist - start_dist
-      );
-
-      const totalDistTraveled = _.sum(segLens);
-
-      const travelTimesPerSegment = segLens.map(
-        len => (travelTimeSecs * len) / totalDistTraveled
-      );
-
-      const segDptrTimes = travelTimesPerSegment.reduce(
-        (acc, tt) => {
-          const prevSegDptrTS = _.last(acc);
-          acc.push(prevSegDptrTS + tt);
-          return acc;
-        },
-        [dptrTS] // departure time from the previous stop_times entry
-      );
-
-      const segDprtEpochs = segDptrTimes.map(getEpoch);
-
-      // console.log(
-      // JSON.stringify(
-      // {
-      // dptrTS,
-      // arvlTS,
-      // travelTimeSecs,
-      // segLens,
-      // totalDistTraveled,
-      // travelTimesPerSegment,
-      // segDptrTimes,
-      // segDprtEpochs
-      // },
-      // null,
-      // 4
-      // )
-      // );
-
-      for (let i = 0; i < traversedSegsChain.length; ++i) {
-        const {
-          properties: { shape_index }
-        } = traversedSegsChain[i];
-        const epoch = segDprtEpochs[i];
-        const tt = travelTimesPerSegment[i];
-
-        this.observations.push({ shape_index, epoch, tt });
-
-        // Remove this segment from all stops2segs FIFOs
-        // console.log(shape_index);
-        // this.segs2segs4stops[shape_index].forEach(stops2segsArr => {
-        // console.log(
-        // "1. Popping stop",
-        // this.stop2segsLookUp.get(stops2segsArr)
-        // );
-        // stops2segsArr.pop();
-        // });
-      }
-    }
-
-    // console.log(JSON.stringify([...this.segs2segs4stops[1]], null, 4));
-
-    // Remove all references for segments up to and including the arrival stop segment.
-    for (let i = dptrSegIdx; i < arvlSegIdx; ++i) {
-      // Remove this segment from all stops2segs FIFOs
-      this.segs2segs4stops[i].forEach(stops2segsArr => {
-        // console.log("2. Popping stop", this.stop2segsLookUp.get(stops2segsArr));
-        stops2segsArr.pop();
+      this.observations.push({
+        dptrSegIdx,
+        arvlSegIdx,
+        dptrTS,
+        arvlTS
       });
     }
 
     this.prevStopTimeEntry = {
+      // The dptrSegIdx becomes the current arvlSegIdx.
       dptrSegIdx: arvlSegIdx,
+      // The dptrTS becomes this stop_times entry's departure_time.
       dptrTS: getTimestamp(departure_time)
     };
   }
 
-  writeToDatabase() {
+  writeTripToDatabase() {
     const insertStmt = db.prepare(`
-      INSERT INTO ${SCHEMA}.scheduled_travel_times (
-        trip_id,
+      INSERT INTO ${SCHEMA}.scheduled_transit_traffic (
         shape_id,
-        shape_index,
-        epoch,
-        tt
-      ) VALUES (?, ?, ?, ?, ?) ;`);
+        departure_seg_idx,
+        arrival_seg_idx,
+
+        departure_time_sec,
+        arrival_time_sec,
+
+        trip_id
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    ;`);
 
     for (let i = 0; i < this.observations.length; ++i) {
-      const { shape_index, epoch, tt } = this.observations[i];
+      const { dptrSegIdx, arvlSegIdx, dptrTS, arvlTS } = this.observations[i];
 
       insertStmt.run([
-        this.trip_id,
         this.shape_id,
-        shape_index,
-        epoch,
-        _.round(tt, 3)
+        dptrSegIdx,
+        arvlSegIdx,
+        dptrTS,
+        arvlTS,
+        this.trip_id
       ]);
     }
   }
 }
 
-//  CREATE TABLE IF NOT EXISTS ${SCHEMA}.scheduled_travel_times (
-//    trip_id      TEXT,
-//    shape_id     TEXT,
-//    shape_index  INTEGER,
-//    epoch        INTEGER,
-//    tt           REAL,
-//
-//    PRIMARY KEY (trip_id, shape_id, shape_index, epoch)
-//  ) WITHOUT ROWID ;
-//
-//  CREATE TABLE IF NOT EXISTS ${SCHEMA}.shst_matches_shedule_aggregations (
-//    -- The spatial.
-//    --   We keep handle sections separately for later joining with conflation map.
-//    shst_reference  TEXT,
-//    section_start   REAL,
-//    section_end     REAL,
-//
-//    -- The temporal
-//    dow             INTEGER,
-//    epoch           INTEGER,
-//
-//    -- The synthetic probe data
-//    avg_tt          REAL,
-//    count           INTEGER
-//
-//    PRIMARY KEY (shst_reference, section_start, section_end)
-//  ) WITHOUT ROWID ;
-
 function loadTripStopTimes() {
   const rawGtfsDAO = RawGtfsDAOFactory.getDAO();
 
-  db.exec(`DROP TABLE IF EXISTS ${SCHEMA}.scheduled_travel_times; `);
+  db.exec(`DROP TABLE IF EXISTS ${SCHEMA}.scheduled_transit_traffic;`);
 
-  createScheduledTravelTimesTable(db);
+  createScheduledTransitTrafficTable(db);
 
   const scheduledStopsIter = rawGtfsDAO.makeScheduledStopsIterator();
 
@@ -365,7 +312,7 @@ function loadTripStopTimes() {
       }
 
       // Write the previous trip to the database
-      tripTracker.writeToDatabase();
+      tripTracker.writeTripToDatabase();
 
       // Initialize a new trip tracker
       tripTracker = new TripTracker(tripStop);
@@ -376,166 +323,37 @@ function loadTripStopTimes() {
   }
 
   if (tripTracker) {
-    tripTracker.writeToDatabase();
+    tripTracker.writeTripToDatabase();
   }
 }
 
-function joinSheduledTripsWithShstMatches() {
-  db.attachDatabase(RAW_GTFS);
-  db.attachDatabase(GTFS_OSM_NETWORK);
-
-  db.exec(
-    `DROP TABLE IF EXISTS ${SCHEMA}.shst_matches_schedule_aggregations; `
-  );
-  createShstMatchesScheduleAggregationsTable(db);
-
-  // NOTE: This depends on the shst matches which are imperfect.
-  //       Improving the matching will improve the avg_tt
-  db.prepare(
-    `
-    CREATE TEMPORARY TABLE tmp_shst_ref_seg_len_ratios (
-      shape_id        TEXT,
-      shape_index     TEXT,
-      shst_reference  TEXT,
-      section_start   REAL,
-      section_end     REAL,
-
-      length_ratio    REAL,
-
-      PRIMARY KEY(shape_id, shape_index, shst_reference, section_start, section_end)
-    ) WITHOUT ROWID; `
-  ).run();
-
-  db.prepare(
-    `
-    INSERT INTO tmp_shst_ref_seg_len_ratios
-      SELECT
-        shape_id,
-        shape_index,
-        shst_reference,
-        section_start,
-        section_end,
-        ( feature_len_km / total_shst_seg_lens ) AS length_ratio
-      FROM ${GTFS_OSM_NETWORK}.tmp_gtfs_network_matches
-        INNER JOIN ${GTFS_OSM_NETWORK}.tmp_shst_match_features
-          USING (shst_reference, section_start, section_end)
-        INNER JOIN (
-          SELECT
-              shape_id,
-              shape_index,
-              SUM(feature_len_km) AS total_shst_seg_lens
-            FROM ${GTFS_OSM_NETWORK}.tmp_gtfs_network_matches
-              INNER JOIN ${GTFS_OSM_NETWORK}.tmp_shst_match_features
-                USING (shst_reference, section_start, section_end)
-            GROUP BY shape_id, shape_index
-        ) AS total_matched_lengths USING (shape_id, shape_index) ;`
-  ).run();
-
-  db.prepare(
-    `
-    INSERT INTO ${SCHEMA}.shst_matches_schedule_aggregations (
-        shst_reference,
-        section_start,
-        section_end,
-        route_id,
-        dow,
-        epoch,
-        avg_tt,
-        count
-      )
-      SELECT
-          shst_reference,
-          section_start,
-          section_end,
-
-          route_id,
-
-          dow,
-          epoch,
-
-          ROUND(
-            AVG( tt * length_ratio ),
-            3
-          ) AS avg_tt,
-
-          COUNT(1) AS count
-
-        -- Includes (shape_id, shape_index)
-        FROM ${SCHEMA}.scheduled_travel_times
-
-          -- gets us the potenially many (shst_reference, section_start, section_end)
-          INNER JOIN ${GTFS_OSM_NETWORK}.tmp_gtfs_network_matches
-            USING (shape_id, shape_index)
-
-          INNER JOIN tmp_shst_ref_seg_len_ratios
-            USING (shape_id, shape_index, shst_reference, section_start, section_end )
-
-          INNER JOIN (
-            SELECT
-                route_id,
-                trip_id,
-                service_dows_each.key AS dow
-              FROM trips
-                INNER JOIN (
-                  SELECT
-                      service_id,
-                      json_array(
-                        sunday,
-                        monday,
-                        tuesday,
-                        wednesday,
-                        thursday,
-                        friday,
-                        saturday,
-                        sunday
-                      ) AS dows
-                    FROM ${RAW_GTFS}.calendar
-                ) AS service_dows USING (service_id), json_each(dows) AS service_dows_each
-              WHERE ( service_dows_each.value = 1 )
-          ) trips_dows USING (trip_id)
-        GROUP BY shst_reference, section_start, section_end, route_id, dow, epoch ;`
-  ).run();
-}
-
-function loadShstRefsGtfsRoutesTable() {
-  db.attachDatabase(RAW_GTFS);
-  db.attachDatabase(GTFS_OSM_NETWORK);
-
-  db.exec(`DROP TABLE IF EXISTS ${SCHEMA}.shst_matches_routes; `);
-  createShstRefsToGtfsRoutesTable(db);
-
-  db.prepare(
-    `
-    INSERT INTO ${SCHEMA}.shst_matches_routes (
-        shst_reference,
-        section_start,
-        section_end,
-        route_id
-      )
-      SELECT DISTINCT
-          shst_reference,
-          section_start,
-          section_end,
-          route_id
-        FROM ${SCHEMA}.scheduled_travel_times
-          INNER JOIN ${GTFS_OSM_NETWORK}.tmp_gtfs_network_matches
-            USING (shape_id, shape_index)
-          INNER JOIN ${RAW_GTFS}.trips
-            USING (trip_id) ;`
-  ).run();
-}
-
 function load() {
-  GtfsNetworkDAOFactory.getDAO();
-
   db.unsafeMode(true);
 
   try {
     db.exec("BEGIN");
 
     loadTripStopTimes();
-    joinSheduledTripsWithShstMatches();
-    loadShstRefsGtfsRoutesTable();
+
+    const [rawStopTimesRows] = db
+      .prepare(
+        // The scheduled_transit_traffic table contains (departure, arrival) pairs.
+        // Therefore, it will have one less row per trip than the stop_times table.
+        `SELECT COUNT(1) - COUNT(DISTINCT trip_id) FROM ${RAW_GTFS}.stop_times ;`
+      )
+      .raw()
+      .get();
+
+    const [scheduledTransitTrafficRows] = db
+      .prepare(`SELECT COUNT(1) FROM ${SCHEMA}.scheduled_transit_traffic ;`)
+      .raw()
+      .get();
+
+    if (rawStopTimesRows !== scheduledTransitTrafficRows) {
+      console.warn(
+        `rawStopTimesRows: ${rawStopTimesRows}, scheduledTransitTrafficRows: ${scheduledTransitTrafficRows}`
+      );
+    }
 
     db.exec("COMMIT;");
   } catch (err) {

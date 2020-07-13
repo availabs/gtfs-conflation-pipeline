@@ -1,53 +1,28 @@
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
-const createScheduledTravelTimesTable = db =>
+const createScheduledTransitTrafficTable = db =>
   db.exec(`
-    CREATE TABLE IF NOT EXISTS ${SCHEMA}.scheduled_travel_times (
-      trip_id      TEXT,
-      shape_id     TEXT,
-      shape_index  INTEGER,
-      epoch        INTEGER,
-      tt           REAL,
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.scheduled_transit_traffic (
+        shape_id            TEXT,
+        departure_seg_idx   INTEGER,
+        arrival_seg_idx     INTEGER,
 
-      PRIMARY KEY (trip_id, shape_id, shape_index, epoch)
-    ) WITHOUT ROWID ;
-  `);
+        departure_time_sec  INTEGER,
+        arrival_time_sec    INTEGER,
 
-const createShstMatchesScheduleAggregationsTable = db =>
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS ${SCHEMA}.shst_matches_schedule_aggregations (
-      -- We handle sections separately for later joining with conflation map.
-      shst_reference  TEXT,
-      section_start   REAL,
-      section_end     REAL,
+        trip_id             TEXT,
 
-      route_id        TEXT,
-
-      dow             INTEGER,
-      epoch           INTEGER,
-
-      avg_tt          REAL,
-      count           INTEGER,
-
-      PRIMARY KEY (shst_reference, section_start, section_end, route_id, dow, epoch)
-    ) WITHOUT ROWID ;
-  `);
-
-const createShstRefsToGtfsRoutesTable = db =>
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS ${SCHEMA}.shst_matches_routes (
-      -- We handle sections separately for later joining with conflation map.
-      shst_reference  TEXT,
-      section_start   REAL,
-      section_end     REAL,
-      route_id        TEXT,
-
-      PRIMARY KEY (shst_reference, section_start, section_end, route_id)
+      PRIMARY KEY (
+        shape_id,
+        departure_seg_idx,
+        arrival_seg_idx,
+        departure_time_sec,
+        arrival_time_sec,
+        trip_id
+      )
     ) WITHOUT ROWID ;
   `);
 
 module.exports = {
-  createScheduledTravelTimesTable,
-  createShstMatchesScheduleAggregationsTable,
-  createShstRefsToGtfsRoutesTable
+  createScheduledTransitTrafficTable
 };
