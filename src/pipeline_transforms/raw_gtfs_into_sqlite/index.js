@@ -1,5 +1,7 @@
 /* eslint-disable no-await-in-loop */
 
+const { copyFileSync } = require("fs");
+const { join } = require("path");
 const { pipeline } = require("stream");
 
 const unzipper = require("unzipper");
@@ -9,7 +11,7 @@ const logger = require("../../services/Logger");
 
 const RawGtfsDAO = require("../../daos/RawGtfsDAOFactory");
 
-const main = async ({ gtfs_zip }) => {
+const main = async ({ gtfs_zip, output_dir }) => {
   try {
     const db_service = RawGtfsDAO.getDAO();
 
@@ -36,6 +38,12 @@ const main = async ({ gtfs_zip }) => {
       if (rowCt === null) {
         logger.warn(`No table created for ${fileName}.`);
       }
+    }
+
+    const zipArchiveCopyPath = join(output_dir, "gtfs.zip");
+
+    if (gtfs_zip !== zipArchiveCopyPath) {
+      copyFileSync(gtfs_zip, zipArchiveCopyPath);
     }
 
     logger.timeEnd("load raw gtfs");

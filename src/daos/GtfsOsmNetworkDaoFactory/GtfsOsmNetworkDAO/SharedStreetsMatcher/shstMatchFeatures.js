@@ -23,6 +23,11 @@ const PROJECT_ROOT = join(__dirname, "../../../../../");
 const SHST_DATA_DIR = join(PROJECT_ROOT, "data/shst/");
 const SHST_PATH = join(PROJECT_ROOT, "node_modules/.bin/shst");
 
+const MATCH = "MATCH";
+const ROUTE = "ROUTE";
+const DISTANCE_SLICE_METHOD = "DISTANCE_SLICE_METHOD";
+const BEARING_SLICE_METHOD = "BEARING_SLICE_METHOD";
+
 const SHST_CHILD_PROC_OPTS = {
   cwd: PROJECT_ROOT,
   env: { ...process.env, HOME: SHST_DATA_DIR }
@@ -39,6 +44,7 @@ const SHST_DATA_DIR_REGEXP = new RegExp(
 // const SURFACE_STREETS_ONLY = "--match-surface-streets-only";
 
 const MAX_FEATURE_LENGTH = 2; /* km */
+const MATCHES_LENGTH_RATIO_THOLD = 0.1;
 
 const runShstMatch = (inFilePath, outFilePath, flags) => {
   return new Promise(resolve => {
@@ -210,6 +216,70 @@ const runMatcher = (features, flags) =>
     flags: flags.concat([])
   });
 
+const updateMatches = (matches, newMatches) => {
+  // Will prefer non-osrm-assisted in result set.
+  // https://lodash.com/docs/4.17.15#uniqWith
+  //   The order of result values is determined by the order they occur in the array.
+  const uniqueMatches = _.uniqWith(
+    Array.prototype.concat(matches, newMatches).filter(f => f),
+    // Definition of "equivalence"
+    (a, b) =>
+      // same target_map feature
+      a.properties.pp_id === b.properties.pp_id &&
+      // same source_map feature id
+      a.properties.shstReferenceId === b.properties.shstReferenceId &&
+      // same source_map coordinates
+      _.isEqual(turf.getCoords(a), turf.getCoords(b))
+  );
+
+  // Mutate the original array
+  // Clear it
+  matches.length = 0;
+
+  // Fill it with the new set union
+  matches.push(...uniqueMatches);
+};
+
+const updateUnmatched = (unmatched, matches) => {
+  const matchesByTargetMapId = Array.isArray(matches)
+    ? matches.reduce((acc, shstMatch) => {
+        if (shstMatch && shstMatch.geometry.coordinates.length > 1) {
+          const {
+            properties: { pp_id }
+          } = shstMatch;
+
+          acc[pp_id] = acc[pp_id] || [];
+          acc[pp_id].push(shstMatch);
+        }
+
+        return acc;
+      }, {})
+    : {};
+
+  const unmatchedFeatures = unmatched.filter(feature => {
+    const {
+      properties: { id }
+    } = feature;
+
+    const matchesForFeature = matchesByTargetMapId[id] || [];
+
+    const featureLength = turf.length(feature);
+    const totalMatchesLength = matchesForFeature.reduce(
+      (acc, shstMatch) => acc + turf.length(shstMatch),
+      0
+    );
+
+    const matchesLenRatio =
+      (featureLength - totalMatchesLength) / featureLength;
+
+    return matchesLenRatio >= MATCHES_LENGTH_RATIO_THOLD;
+  });
+
+  unmatched.length = 0;
+
+  unmatched.push(...unmatchedFeatures);
+};
+
 const shstMatchFeatures = async (features, flags = []) => {
   if (_.isEmpty(features)) {
     return null;
@@ -225,6 +295,9 @@ const shstMatchFeatures = async (features, flags = []) => {
   // );
   // }
 
+  const unmatched = features.slice();
+  const matches = [];
+
   // matching will use car routing rules in OSRM
   const { osrmDir, matchedFeatures: matchedCar = [] } =
     // (await runMatcher(features, flags.concat(CAR))) || {};
@@ -237,47 +310,52 @@ const shstMatchFeatures = async (features, flags = []) => {
     });
   }
 
-  const osrmMapped = [];
+  updateMatches(matches, matchedCar);
+  updateUnmatched(unmatched, matches);
 
-  for (const feature of features) {
-    try {
-      const mapped = await replaceFeaturesGeomsWithOsrmRoute({
-        osrmDir,
-        feature
-      });
-      if (mapped) {
-        osrmMapped.push(...mapped);
+  const osrmMethods = [ROUTE, MATCH];
+  const lineSliceMethods = [DISTANCE_SLICE_METHOD, BEARING_SLICE_METHOD];
+
+  for (let i = 0; i < osrmMethods.length; ++i) {
+    const osrmMethod = osrmMethods[i];
+
+    for (let j = 0; j < lineSliceMethods.length; ++j) {
+      const lineSliceMethod = lineSliceMethods[i];
+
+      const osrmMapped = [];
+
+      for (const feature of unmatched) {
+        try {
+          const mapped = await replaceFeaturesGeomsWithOsrmRoute(
+            {
+              osrmDir,
+              feature
+            },
+            { lineSliceMethod, osrmMethod }
+          );
+          if (mapped) {
+            osrmMapped.push(...mapped);
+          }
+        } catch (err) {
+          console.warn(err);
+        }
       }
-    } catch (err) {
-      console.warn(err);
+
+      const { matchedFeatures: matchedOsrmMappedCar } =
+        // (await runMatcher(osrmMapped, flags.concat(CAR))) || {};
+        (await runMatcher(osrmMapped, flags)) || {};
+
+      if (Array.isArray(matchedOsrmMappedCar)) {
+        matchedOsrmMappedCar.forEach(feature => {
+          /* eslint-disable-next-line */
+          feature.properties.pp_osrm_assisted = true;
+        });
+      }
+
+      updateMatches(matches, matchedOsrmMappedCar);
+      updateUnmatched(unmatched, matches);
     }
   }
-
-  const { matchedFeatures: matchedOsrmMappedCar } =
-    // (await runMatcher(osrmMapped, flags.concat(CAR))) || {};
-    (await runMatcher(osrmMapped, flags)) || {};
-
-  if (Array.isArray(matchedOsrmMappedCar)) {
-    matchedOsrmMappedCar.forEach(feature => {
-      /* eslint-disable-next-line */
-      feature.properties.pp_osrm_assisted = true;
-    });
-  }
-
-  // Will prefer non-osrm-assisted in result set.
-  // https://lodash.com/docs/4.17.15#uniqWith
-  //   The order of result values is determined by the order they occur in the array.
-  const matches = _.uniqWith(
-    Array.prototype.concat(matchedCar, matchedOsrmMappedCar).filter(f => f),
-    // Definition of "equivalence"
-    (a, b) =>
-      // same target_map feature
-      a.properties.pp_id === b.properties.pp_id &&
-      // same source_map feature id
-      a.properties.shstReferenceId === b.properties.shstReferenceId &&
-      // same source_map coordinates
-      _.isEqual(turf.getCoords(a), turf.getCoords(b))
-  );
 
   const idxById = {};
   for (let i = 0; i < matches.length; ++i) {

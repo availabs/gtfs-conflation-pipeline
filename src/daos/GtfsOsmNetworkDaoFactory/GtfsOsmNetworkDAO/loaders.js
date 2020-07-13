@@ -29,7 +29,6 @@ async function load() {
     // Step 1: Iterate in geospatial order and collect matches in TEMP table.
     xdb.exec(`
       DROP TABLE IF EXISTS ${SCHEMA}.tmp_shst_match_features;
-      DROP TABLE IF EXISTS ${SCHEMA}.tmp_gtfs_network_matches;
 
       CREATE TABLE IF NOT EXISTS ${SCHEMA}.tmp_shst_match_features (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
