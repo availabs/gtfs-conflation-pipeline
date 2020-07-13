@@ -3,26 +3,29 @@
 ## Instructions
 
 ### Install Node dependencies
-```
+
+```bash
 npm install
 ```
 
 ### View the yargs script help.
-```
+
+```bash
 ./run --help
 ```
 
 ## A Pipeline of Transparent Transformations
 
 The data transformations are broken down into stages.
-Each stage's output is written to its own SQLite database.
+Each stage's output is written to its own
+  SQLite database[¹](https://www.sqlite.org/aff_short.html)[²](https://www.sqlite.org/appfileformat.html).
 This combination of decomposition and transparency
   allows inspection and correction of each stages' output
   before proceeding to the next stage.
 
 ### Pipeline Stage 1: Load the GTFS data into a SQLite database
 
-```
+```bash
 $ ./run load_raw_gtfs_into_sqlite --gtfs_zip data/gtfs/cdta/gtfs.zip --output_dir output/cdta
 load raw gtfs: 6208.954ms
 ```
@@ -31,7 +34,7 @@ load raw gtfs: 6208.954ms
 
 Transform GTFS shapes to GeoJSON LineStrings and GTFS stops to GeoJSON Points.
 
-```
+```bash
 $ ./run gtfs_as_geojson --output_dir output/cdta
 load gtfs as geojson: 474.325ms
 ```
@@ -40,7 +43,7 @@ load gtfs as geojson: 474.325ms
 
 Outputs GTFS shapes as GeoJSON LineStrings segmented at snapped stops.
 
-```
+```bash
 $ ./run gtfs_network --output_dir output/cdta
 load gtfs network: 19992.788ms
 ```
@@ -52,7 +55,8 @@ load gtfs network: 19992.788ms
 ## Example Usage
 
 Given the following data directory structure
-```
+
+```bash
 $ tree data/gtfs
 data/gtfs
 ├── cdta
@@ -76,6 +80,7 @@ data/gtfs
 ```
 
 Running the following
+
 ```bash
 find data/gtfs -mindepth 1 -type d |
   sort |
