@@ -6,9 +6,11 @@
 
 ```bash
 npm install
+mv ./node_modules/osrm/profiles/car.lua ./node_modules/osrm/profiles/car.lua.default
+cp ./src/osrm_profiles/transit-car-based.lua ./node_modules/osrm/profiles/car.lua
 ```
 
-### View the yargs script help.
+### View the yargs script help
 
 ```bash
 ./run --help
@@ -46,6 +48,17 @@ Outputs GTFS shapes as GeoJSON LineStrings segmented at snapped stops.
 ```bash
 $ ./run gtfs_network --output_dir output/cdta
 load gtfs network: 19992.788ms
+```
+
+### Pipeline Stage 4: SharedStreets conflation of GTFS Transit Network
+
+Run GTFS transit network through SharedStreets with some assistance.
+Outputs conflation results.
+
+```bash
+$ ./run gtfs_osm_network --output_dir output/cdta
+# ... shst logging ...
+load gtfs-osm network: 3284747.261ms
 ```
 
 ## Where to get the data
@@ -90,9 +103,9 @@ find data/gtfs -mindepth 1 -type d |
     echo "$dir";
 
     ./run load_raw_gtfs_into_sqlite --gtfs_zip="${dir}/gtfs.zip" --output_dir="$output_dir"
-    ./run gtfs_as_geojson  --output_dir="$output_dir"
-    ./run gtfs_network  --output_dir="$output_dir"
-    ./run gtfs_network  --output_dir="$output_dir"
+    ./run gtfs_as_geojson --output_dir="$output_dir"
+    ./run gtfs_network --output_dir="$output_dir"
+    ./run gtfs_osm_network --output_dir="$output_dir"
 
     echo;
   done
