@@ -16,7 +16,7 @@ const ROUTE = "ROUTE";
 
 // Max number of waypoints to add
 const N = 10;
-const LEN_DIFF_R_REJECT_TH = 0.2;
+const LEN_DIFF_R_REJECT_TH = 0.05;
 const SIMILARITY_THOLD = 0.008;
 
 const splitLineStringUsingSmoothness = require("../../../../utils/splitLineStringUsingSmoothness");
@@ -82,7 +82,8 @@ const getRoute = (osrm, feature) =>
   new Promise(resolve =>
     osrm.route(
       {
-        alternatives: true,
+        // alternatives: true,
+        alternatives: false,
         coordinates: turf.getCoords(feature),
         geometries: "geojson",
         continue_straight: true,
@@ -126,7 +127,7 @@ const lineSliceByDistanceMethod = async ({ feature, osrmDir }, osrmMethod) => {
 
   const mappedOptions = [];
 
-  for (let n = N; n >= 3; --n) {
+  for (let n = N; n >= 4; --n) {
     try {
       const waypointCoords = _.range(0, n).map(m =>
         _.first(
@@ -203,6 +204,33 @@ const lineSliceByBearingMethod = async ({ feature, osrmDir }, osrmMethod) => {
 
   bearingSplitSegments.push(...singleTurns);
 
+  const chunkedBearingSplitSegments = _.flattenDeep(
+    bearingSplitSegments.map(f => {
+      const featureLen = turf.length(f);
+      const { features: chunkedFeatures } = turf.lineChunk(f, 2.5); // 2.5KM
+
+      if (chunkedFeatures.length > 1) {
+        const lastChunk = _.last(chunkedFeatures);
+        const lastChunkLen = turf.length(lastChunk);
+        if (lastChunkLen < 1) {
+          const fullLastChunk = turf.lineSliceAlong(
+            lastChunk,
+            featureLen - 2.5,
+            featureLen
+          );
+
+          chunkedFeatures.push(fullLastChunk);
+        }
+
+        return chunkedFeatures;
+      }
+
+      return null;
+    })
+  ).filter(f => f);
+
+  bearingSplitSegments.push(...chunkedBearingSplitSegments);
+
   const mappedOptions = [];
 
   try {
@@ -259,6 +287,7 @@ const lineSliceByBearingMethod = async ({ feature, osrmDir }, osrmMethod) => {
 
 const replaceFeaturesGeomsWithOsrmRoute = async (
   params,
+  // {lineSliceMethod = DISTANCE_SLICE_METHOD, osrmMethod = ROUTE} = {}
   { lineSliceMethod = DISTANCE_SLICE_METHOD, osrmMethod = ROUTE } = {}
 ) => {
   if (lineSliceMethod === DISTANCE_SLICE_METHOD) {

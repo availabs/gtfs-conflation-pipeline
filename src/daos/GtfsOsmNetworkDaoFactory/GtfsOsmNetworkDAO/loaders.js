@@ -15,19 +15,13 @@ const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
 const { matchSegmentedShapeFeatures } = require("./SharedStreetsMatcher");
 
+const chooseShstMatchesForShape = require("./chooseShstMatchesForShape");
+
 const PRECISION = 6;
 
-async function load() {
-  const xdb = db.openLoadingConnectionToDb(SCHEMA);
-
-  db.unsafeMode(true);
-  xdb.unsafeMode(true);
-
-  try {
-    xdb.exec("BEGIN");
-
-    // Step 1: Iterate in geospatial order and collect matches in TEMP table.
-    xdb.exec(`
+async function loadRawShStMatches(xdb) {
+  // Step 1: Iterate in geospatial order and collect matches in TEMP table.
+  xdb.exec(`
       DROP TABLE IF EXISTS ${SCHEMA}.tmp_shst_match_features;
 
       CREATE TABLE IF NOT EXISTS ${SCHEMA}.tmp_shst_match_features (
@@ -45,7 +39,7 @@ async function load() {
       ) ;
   `);
 
-    const insertShstMatchStmt = xdb.prepare(`
+  const insertShstMatchStmt = xdb.prepare(`
       INSERT OR IGNORE INTO tmp_shst_match_features (
         shape_id,
         shape_index,
@@ -58,47 +52,144 @@ async function load() {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ;
     `);
 
-    const gtfsNetworkDAO = GtfsNetworkDAOFactory.getDAO();
+  const gtfsNetworkDAO = GtfsNetworkDAOFactory.getDAO();
 
-    const iter = gtfsNetworkDAO.makeShapeSegmentsIterator();
+  const iter = gtfsNetworkDAO.makeShapeSegmentsIterator();
 
-    const matchesIter = matchSegmentedShapeFeatures(iter);
+  const matchesIter = matchSegmentedShapeFeatures(iter);
 
-    for await (const { matchFeature, osrm_dir } of matchesIter) {
-      const {
-        properties: {
-          shstReferenceId,
-          section: [section_start, section_end],
-          pp_shape_id,
-          pp_shape_index
-        }
-      } = matchFeature;
+  for await (const { matchFeature, osrm_dir } of matchesIter) {
+    const {
+      properties: {
+        shstReferenceId,
+        section: [section_start, section_end],
+        pp_shape_id,
+        pp_shape_index
+      }
+    } = matchFeature;
 
-      roundGeometryCoordinates(matchFeature);
+    roundGeometryCoordinates(matchFeature);
 
-      const sectionStartRounded = _.round(section_start, PRECISION);
-      const sectionEndRounded = _.round(section_end, PRECISION);
+    const sectionStartRounded = _.round(section_start, PRECISION);
+    const sectionEndRounded = _.round(section_end, PRECISION);
 
-      const featureLenKm = _.round(turf.length(matchFeature), 6);
+    const featureLenKm = _.round(turf.length(matchFeature), 6);
 
-      insertShstMatchStmt.run([
-        `${pp_shape_id}`,
-        `${pp_shape_index}`,
-        `${shstReferenceId}`,
-        `${sectionStartRounded}`,
-        `${sectionEndRounded}`,
-        `${osrm_dir}`,
-        `${featureLenKm}`,
-        `${JSON.stringify(matchFeature)}`
-      ]);
+    insertShstMatchStmt.run([
+      `${pp_shape_id}`,
+      `${pp_shape_index}`,
+      `${shstReferenceId}`,
+      `${sectionStartRounded}`,
+      `${sectionEndRounded}`,
+      `${osrm_dir}`,
+      `${featureLenKm}`,
+      `${JSON.stringify(matchFeature)}`
+    ]);
+  }
+}
+
+// Step 2: Iterate over matches in shape_id, shape_index order
+//         and use graph connectivity to choose matches.
+//         If shape is unconnected, use OSRM to help ShSt matching.
+function loadProcessedShstMatches(xdb) {
+  xdb.exec(`
+    DROP TABLE IF EXISTS ${SCHEMA}.gtfs_shape_shst_match_paths;
+
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.gtfs_shape_shst_match_paths (
+      gtfs_shape_id     INTEGER,
+      gtfs_shape_index  INTEGER,
+      path_index        INTEGER,
+      path_edge_index   INTEGER,
+      shst_match_id     INTEGER,
+      shst_reference    TEXT,
+      shst_ref_start    REAL,
+      shst_ref_end      REAL,
+      
+      PRIMARY KEY (gtfs_shape_id, gtfs_shape_index, path_index, path_edge_index)
+    ) WITHOUT ROWID;
+  `);
+
+  const insertStmt = xdb.prepare(`
+    INSERT OR IGNORE INTO gtfs_shape_shst_match_paths (
+      gtfs_shape_id,
+      gtfs_shape_index,
+      path_index,
+      path_edge_index,
+      shst_match_id,
+      shst_reference,
+      shst_ref_start,
+      shst_ref_end
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ;
+  `);
+
+  const iter = this.makeShapeMatchesIterator();
+
+  for (const gtfsShapeShstMatches of iter) {
+    const chosenPaths = chooseShstMatchesForShape(gtfsShapeShstMatches);
+
+    if (_.isEmpty(chosenPaths)) {
+      continue;
     }
 
-    // TODO: Iterate over all tmp_shst_match_features and set feature id to row id
+    for (let i = 0; i < chosenPaths.length; ++i) {
+      const paths = chosenPaths[i];
 
-    // Step 2: Iterate over matches in shape_id, shape_index order
-    //         and use graph connectivity to choose matches.
-    //         If shape is unconnected, use OSRM to help ShSt matching.
+      if (_.isEmpty(paths)) {
+        continue;
+      }
 
+      for (let path_index = 0; path_index < paths.length; ++path_index) {
+        const {
+          properties: { shape_id, shape_index, pathDecompositionInfo }
+        } = paths[path_index];
+
+        if (_.isEmpty(pathDecompositionInfo)) {
+          continue;
+        }
+
+        for (
+          let path_edge_index = 0;
+          path_edge_index < pathDecompositionInfo.length;
+          ++path_edge_index
+        ) {
+          const {
+            id: shst_match_id,
+            shstReferenceId: shst_reference = null,
+            shstReferenceSection: [
+              shst_ref_start = null,
+              shst_ref_end = null
+            ] = []
+          } = pathDecompositionInfo[path_edge_index];
+
+          insertStmt.run([
+            shape_id,
+            shape_index,
+            path_index,
+            path_edge_index,
+            shst_match_id,
+            shst_reference,
+            shst_ref_start,
+            shst_ref_end
+          ]);
+        }
+      }
+    }
+  }
+}
+
+async function load() {
+  const xdb = db.openLoadingConnectionToDb(SCHEMA);
+
+  try {
+    db.unsafeMode(true);
+    xdb.unsafeMode(true);
+
+    // xdb.exec("BEGIN");
+    // await loadRawShStMatches(xdb);
+    // xdb.exec("COMMIT");
+
+    xdb.exec("BEGIN");
+    loadProcessedShstMatches.call(this, xdb);
     xdb.exec("COMMIT;");
   } catch (err) {
     console.error(err);
