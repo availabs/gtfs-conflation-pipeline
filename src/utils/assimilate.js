@@ -7,7 +7,7 @@
 //    * is the function an arrow function
 //        https://stackoverflow.com/q/28222228/3970755
 const isBindable = func => {
-  if (typeof func !== 'function') {
+  if (typeof func !== "function") {
     return false;
   }
 
@@ -22,7 +22,7 @@ const isBindable = func => {
   // In short, we return false iff we have an arrow function.
 
   // Remove all line breaks: https://stackoverflow.com/a/10805292/3970755
-  const funcStringified = func.toString().replace(/\r?\n|\r/g, ' ');
+  const funcStringified = func.toString().replace(/\r?\n|\r/g, " ");
 
   // isNonArrowFnRegex
   if (/^\s*function/.test(funcStringified)) {
@@ -63,7 +63,7 @@ function assimilate(priv, pub, obj) {
 
   Object.keys(obj).forEach(k => {
     const v = obj[k];
-    if (typeof v === 'function') {
+    if (typeof v === "function") {
       if (!isBindable(v)) {
         throw new Error(
           `${k} is not bindable. Make sure it is not an arrow function or already bound.`

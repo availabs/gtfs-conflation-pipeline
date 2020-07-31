@@ -3,6 +3,32 @@
 const turf = require("@turf/turf");
 const _ = require("lodash");
 
+const segmentizeShapeLineString = shapeLineString =>
+  turf.segmentReduce(
+    shapeLineString,
+    (acc, segment, _0, _1, _2, segment_idx) => {
+      const prevSeg = _.last(acc);
+
+      const {
+        properties: {
+          start_dist_along: prevSegDistAlong = 0,
+          length_km: prevSegLength = 0
+        } = {}
+      } = prevSeg || {};
+
+      acc.push({
+        ...segment,
+        properties: {
+          segment_idx,
+          length_km: turf.length(segment),
+          start_dist_along: prevSegDistAlong + prevSegLength
+        }
+      });
+      return acc;
+    },
+    []
+  );
+
 // O(S*Ps) where S is the number of stopPoints, and Ps is the number of path segments.
 function getStopsProjectedToPathSegmentsTable(stopPoints, shapeSegments) {
   // Each stop point, mapped to each path segment
@@ -139,7 +165,9 @@ function fitStopsToPathUsingLeastSquares(theTable) {
   return null;
 }
 
-function fitStopsToPath(shapeSegments, stopPointsSeq) {
+function fitStopsToPath(shapeLineString, stopPointsSeq) {
+  const shapeSegments = segmentizeShapeLineString(shapeLineString);
+
   // first build the table
   const theTable = getStopsProjectedToPathSegmentsTable(
     stopPointsSeq,

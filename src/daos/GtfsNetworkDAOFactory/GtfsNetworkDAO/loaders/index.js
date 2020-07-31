@@ -23,41 +23,17 @@ const { createShapeSegmentsTable } = require("../createTableFns");
 const roundGeometryCoordinates = require("../../../../utils/roundGeometryCoordinates");
 const getGeoProximityKey = require("../../../../utils/getGeoProximityKey");
 
-const fitStopsToPath = require("./fitStopsToPath");
-
-const segmentizeShapeLineString = shapeLineString =>
-  turf.segmentReduce(
-    shapeLineString,
-    (acc, segment, _0, _1, _2, segment_idx) => {
-      const prevSeg = _.last(acc);
-
-      const {
-        properties: {
-          start_dist_along: prevSegDistAlong = 0,
-          length_km: prevSegLength = 0
-        } = {}
-      } = prevSeg || {};
-
-      acc.push({
-        ...segment,
-        properties: {
-          segment_idx,
-          length_km: turf.length(segment),
-          start_dist_along: prevSegDistAlong + prevSegLength
-        }
-      });
-      return acc;
-    },
-    []
-  );
-
-const getStopSnappedDistancesAlongShape = (shapeLineString, stopPointsSeq) =>
-  fitStopsToPath(segmentizeShapeLineString(shapeLineString), stopPointsSeq);
+const snapGtfsStopsSequenceToGtfsShape = require("./snapGtfsStopsSequenceToGtfsShape");
 
 let id = 0;
 
 // Warning: mutates orderedSnaps
-const insertSlicedShape = (shapeLineString, orderedSnaps) => {
+const insertSlicedShape = (shapeLineString, stopPointsSeq) => {
+  const orderedSnaps = snapGtfsStopsSequenceToGtfsShape(
+    shapeLineString,
+    stopPointsSeq
+  );
+
   const snappedStopsInsertStmt = db.prepare(`
     INSERT INTO ${SCHEMA}.shape_segments (
       id,
@@ -205,18 +181,8 @@ function load() {
     const geoJsonGtfsDAO = GeoJsonGtfsDAOFactory.getDAO();
     const iter = geoJsonGtfsDAO.makeShapesWithStopsIterator();
 
-    for (const {
-      shape: shapeLineString,
-      stops: stopPointsSeq,
-      stopSeq
-    } of iter) {
-      const orderedSnaps = getStopSnappedDistancesAlongShape(
-        shapeLineString,
-        stopPointsSeq,
-        stopSeq
-      );
-
-      insertSlicedShape(shapeLineString, orderedSnaps);
+    for (const { shape: shapeLineString, stops: stopPointsSeq } of iter) {
+      insertSlicedShape(shapeLineString, stopPointsSeq);
     }
 
     db.exec("COMMIT;");

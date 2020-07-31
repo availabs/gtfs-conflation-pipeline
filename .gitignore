@@ -10,3 +10,5 @@ notes/
 
 *.tar.gz
 *.tar.xz
+
+backups/
