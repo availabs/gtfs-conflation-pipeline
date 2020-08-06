@@ -101,8 +101,6 @@ function* makeShapeMatchesIterator() {
             FROM ${GTFS_NETWORK}.shape_segments AS network_edges
               LEFT OUTER JOIN ${GTFS_OSM_NETWORK}.tmp_shst_match_features
                 AS matches USING (shape_id, shape_index)
--- WHERE (shape_id = '1140257' AND shape_index = 6)
--- WHERE (shape_id = '5400935')
             GROUP BY network_edges.feature
             ORDER BY network_edges.geoprox_key
         ) AS sub_matches_per_segment
@@ -141,8 +139,57 @@ function* makeAllShstMatchesIterator() {
   }
 }
 
+/*
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.gtfs_shape_shst_match_paths (
+      gtfs_shape_id     INTEGER,
+      gtfs_shape_index  INTEGER,
+      path_index        INTEGER,
+      path_edge_index   INTEGER,
+      shst_match_id     INTEGER,
+      shst_reference    TEXT,
+      shst_ref_start    REAL,
+      shst_ref_end      REAL,
+      
+      PRIMARY KEY (gtfs_shape_id, gtfs_shape_index, path_index, path_edge_index)
+    ) WITHOUT ROWID;
+
+      CREATE TABLE IF NOT EXISTS ${SCHEMA}.tmp_shst_match_features (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        shape_id        TEXT,
+        shape_index     INTEGER,
+        shst_reference  TEXT,
+        section_start   REAL,
+        section_end     REAL,
+        osrm_dir        TEXT,
+        feature_len_km  REAL,
+        feature         TEXT,
+        
+        UNIQUE (shape_id, shape_index, shst_reference, section_start, section_end)
+      ) ;
+*/
+function* makeAllChosenShstMatchesIterator() {
+  db.attachDatabase(GTFS_NETWORK);
+
+  const iterQuery = db.prepare(`
+      SELECT DISTINCT
+          feature
+        FROM ${GTFS_OSM_NETWORK}.gtfs_shape_shst_match_paths AS a
+          INNER JOIN ${GTFS_OSM_NETWORK}.tmp_shst_match_features AS b
+          ON ( a.shst_match_id = b.id ) ;
+  `);
+
+  const iter = iterQuery.raw().iterate();
+
+  for (const [featureStr] of iter) {
+    const shstMatch = JSON.parse(featureStr);
+
+    yield shstMatch;
+  }
+}
+
 module.exports = {
   makeMatchesIterator,
   makeShapeMatchesIterator,
-  makeAllShstMatchesIterator
+  makeAllShstMatchesIterator,
+  makeAllChosenShstMatchesIterator
 };
