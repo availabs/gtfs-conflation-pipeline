@@ -1,6 +1,6 @@
-const assimilate = require('../../../utils/assimilate');
+const assimilate = require("../../../utils/assimilate");
 
-const generators = require('./generators');
+const generators = require("./generators");
 
 class GtfsNetworkDAO {
   constructor() {

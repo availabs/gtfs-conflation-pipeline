@@ -8,7 +8,8 @@ const _ = require("lodash");
 
 const {
   GEOJSON_GTFS,
-  GTFS_NETWORK
+  GTFS_NETWORK,
+  GTFS_OSM_NETWORK
 } = require("../../../constants/databaseSchemaNames");
 
 // const supportedLayers = [GEOJSON_GTFS, GTFS_NETWORK];
@@ -16,6 +17,7 @@ const supportedLayers = [GEOJSON_GTFS];
 
 const GeoJsonGtfsDAOFactory = require("../../GeoJsonGtfsDAOFactory");
 const GtfsNetworkDAOFactory = require("../../GtfsNetworkDAOFactory");
+const GtfsOsmNetworkDaoFactory = require("../../GtfsOsmNetworkDaoFactory");
 
 const wgs84 = gdal.SpatialReference.fromEPSG(4326);
 
@@ -130,7 +132,7 @@ const addGeoJsonShapesLayer = dataset => {
   for (const geojsonLineString of iter) {
     const gdalFeature = new gdal.Feature(layer);
 
-    gdalFeature.fields.set("shape_id", geojsonLineString.properties.id);
+    gdalFeature.fields.set("shape_id", geojsonLineString.id);
 
     const lineString = new gdal.LineString();
 
@@ -180,12 +182,15 @@ const addGtfsNetworkLayer = dataset => {
         .replace(/^to_stop_ids$/, "to_stops");
 
       if (definedFields.includes(fieldName)) {
-        const v = geojsonLineString.properties[prop];
+        let v = geojsonLineString.properties[prop];
 
-        gdalFeature.fields.set(
-          fieldName,
-          _.isNil(v) ? null : JSON.stringify(v)
-        );
+        if (_.isNil(v)) {
+          v = null;
+        } else if (typeof v !== "string") {
+          v = JSON.stringify(v);
+        }
+
+        gdalFeature.fields.set(fieldName, v);
       }
     });
 
@@ -201,21 +206,132 @@ const addGtfsNetworkLayer = dataset => {
   }
 };
 
+const addShstMatchesLayer = dataset => {
+  const layer = dataset.layers.create(`shst_matches`, wgs84, gdal.LineString);
+
+  // id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  // shape_id        TEXT,
+  // shape_index     INTEGER,
+  // shst_reference  TEXT,
+  // section_start   REAL,
+  // section_end     REAL,
+  // osrm_dir        TEXT,
+  // feature_len_km  REAL,
+  // feature         TEXT,
+
+  const fieldDefinitionPairs = [
+    ["id", gdal.OFTInteger],
+    ["shst_ref", gdal.OFTString],
+    ["shape_id", gdal.OFTString],
+    ["shape_idx", gdal.OFTInteger]
+  ];
+
+  const definedFields = fieldDefinitionPairs.map(([field]) => field);
+
+  for (const [name, type] of fieldDefinitionPairs) {
+    addFieldToLayer(layer, name, type);
+  }
+
+  const dao = GtfsOsmNetworkDaoFactory.getDAO();
+
+  const iter = dao.makeAllShstMatchesIterator();
+
+  for (const shstMatch of iter) {
+    const gdalFeature = new gdal.Feature(layer);
+
+    Object.keys(shstMatch.properties).forEach(prop => {
+      const fieldName = prop
+        .replace(/^shst_reference$/, "shst_ref")
+        .replace(/^pp_shape_id$/, "shape_id")
+        .replace(/^shape_index$/, "shape_idx");
+
+      if (definedFields.includes(fieldName)) {
+        let v = shstMatch.properties[prop];
+
+        if (_.isNil(v)) {
+          v = null;
+        } else if (typeof v !== "string") {
+          v = JSON.stringify(v);
+        }
+
+        gdalFeature.fields.set(fieldName, v);
+      }
+    });
+
+    const lineString = new gdal.LineString();
+
+    turf
+      .getCoords(shstMatch)
+      .forEach(([lon, lat]) => lineString.points.add(new gdal.Point(lon, lat)));
+
+    gdalFeature.setGeometry(lineString);
+
+    layer.features.add(gdalFeature);
+  }
+};
+
+const addChosenShstMatchesLayer = dataset => {
+  const layer = dataset.layers.create(
+    `chosen_shst_matches`,
+    wgs84,
+    gdal.LineString
+  );
+
+  const fieldDefinitionPairs = [
+    ["id", gdal.OFTInteger],
+    ["shst_ref", gdal.OFTString],
+    ["shape_id", gdal.OFTString],
+    ["shape_idx", gdal.OFTInteger]
+  ];
+
+  const definedFields = fieldDefinitionPairs.map(([field]) => field);
+
+  for (const [name, type] of fieldDefinitionPairs) {
+    addFieldToLayer(layer, name, type);
+  }
+
+  const dao = GtfsOsmNetworkDaoFactory.getDAO();
+
+  const iter = dao.makeAllChosenShstMatchesIterator();
+
+  for (const shstMatch of iter) {
+    console.log("-".repeat(20));
+    console.log(JSON.stringify(shstMatch, null, 4));
+    console.log();
+    const gdalFeature = new gdal.Feature(layer);
+
+    Object.keys(shstMatch.properties).forEach(prop => {
+      const fieldName = prop
+        .replace(/^shstReferenceId$/, "shst_ref")
+        .replace(/^pp_shape_id$/, "shape_id")
+        .replace(/^pp_shape_index$/, "shape_idx");
+
+      if (definedFields.includes(fieldName)) {
+        let v = shstMatch.properties[prop];
+
+        if (_.isNil(v)) {
+          v = null;
+        } else if (typeof v !== "string") {
+          v = JSON.stringify(v);
+        }
+
+        gdalFeature.fields.set(fieldName, v);
+      }
+    });
+
+    const lineString = new gdal.LineString();
+
+    turf
+      .getCoords(shstMatch)
+      .forEach(([lon, lat]) => lineString.points.add(new gdal.Point(lon, lat)));
+
+    gdalFeature.setGeometry(lineString);
+
+    layer.features.add(gdalFeature);
+  }
+};
+
 function outputShapefile(output_file) {
-  // let layersArr;
-
-  // // If none specified, do all.
-  // if (!layers) {
-  // layersArr = supportedLayers;
-  // } else {
-  // layersArr = Array.isArray(layers) ? layers : [layers];
-  // for (const layer of layers) {
-  // if (!supportedLayers.includes(layer)) {
-  // throw new Error(`Unrecognized layer: ${layer}`);
-  // }
-  // }
-  // }
-
   if (!output_file) {
     console.error("The output_file parameter is required");
     process.exit(1);
@@ -228,11 +344,11 @@ function outputShapefile(output_file) {
 
   const dataset = gdal.open(output_file, "w", "ESRI Shapefile");
 
-  if (supportedLayers.includes(GEOJSON_GTFS)) {
-    addGeoJsonStopsLayer(dataset);
-    addGeoJsonShapesLayer(dataset);
-    addGtfsNetworkLayer(dataset);
-  }
+  addGeoJsonStopsLayer(dataset);
+  addGeoJsonShapesLayer(dataset);
+  addGtfsNetworkLayer(dataset);
+  // addShstMatchesLayer(dataset);
+  addChosenShstMatchesLayer(dataset);
 
   dataset.close();
 }
