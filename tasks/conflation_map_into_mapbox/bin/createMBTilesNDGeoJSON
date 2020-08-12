@@ -1,0 +1,50 @@
+#!/bin/bash
+
+set -e
+
+pushd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null
+
+INF='../derived_data/gtfs_qa_conflation_map.ndjson'
+OUTF='../derived_data/gtfs_qa_conflation_map.mbtiles'
+
+FILTER='
+  {
+    "*": [
+      "all",
+      [ "any",
+        [ "<", "networklevel", 1 ],
+        [ ">=", "$zoom", 13 ],
+        [ "all",
+          [ ">=", "$zoom", 3 ],
+          [ "<=", "networklevel", 1 ]
+        ],
+        [ "all",
+          [ ">=", "$zoom", 10 ],
+          [ "<=", "networklevel", 2 ]
+        ],
+        [ "all",
+          [ ">=", "$zoom", 12 ],
+          [ "<=", "networklevel", 3 ]
+        ],
+        [ "all",
+          [ ">=", "$zoom", 13 ],
+          [ "<=", "networklevel", 5 ]
+        ]
+      ]
+    ]
+  }
+'
+
+# FIXME: To reduce the size of the generated mbtiles
+#   1. Move segment ID from feature properties to object root and get rid of generate-ids flag.
+#   2. Rename all fields to a single letter code.
+tippecanoe \
+  --layer=gtfs_conflation_qa \
+  --generate-ids \
+  --read-parallel \
+  --minimum-detail 8 --extend-zooms-if-still-dropping \
+  -j "$FILTER" \
+  --force -o "$OUTF" \
+  "$INF"
+
+popd >/dev/null

@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+
+/* eslint-disable jsdoc/require-jsdoc, no-restricted-syntax, no-await-in-loop */
+
+const { createWriteStream } = require("fs");
+
+const Database = require("better-sqlite3");
+
+const { join } = require("path");
+
+const db = new Database(join(__dirname, "../base_data/conflation_map"));
+
+const iter = db
+  .prepare(
+    `
+    SELECT
+        feature
+      FROM conflation_map
+      ORDER BY id ;`
+  )
+  .raw()
+  .iterate();
+
+const outputStream = createWriteStream(
+  join(__dirname, "../derived_data/gtfs_qa_conflation_map.ndjson")
+);
+
+for (const [featureStr] of iter) {
+  const feature = JSON.parse(featureStr);
+  const {
+    properties: {
+      id,
+      networklevel,
+      shstReferenceId: shstid,
+      segmentIndex: shstidx,
+      osm: {
+        conflationMapMatchedTargetMapId: osmid,
+        conflationMapMatchedTargetMapIdx: osmidx
+      }
+    }
+  } = feature;
+
+  feature.properties = { id, shstid, shstidx, osmid, osmidx, networklevel };
+
+  outputStream.write(`${JSON.stringify(feature)}\n`);
+}
