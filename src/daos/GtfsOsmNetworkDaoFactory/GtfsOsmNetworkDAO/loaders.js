@@ -184,9 +184,9 @@ async function load() {
     db.unsafeMode(true);
     xdb.unsafeMode(true);
 
-    // xdb.exec("BEGIN");
-    // await loadRawShStMatches(xdb);
-    // xdb.exec("COMMIT");
+    xdb.exec("BEGIN");
+    await loadRawShStMatches(xdb);
+    xdb.exec("COMMIT");
 
     xdb.exec("BEGIN");
     loadProcessedShstMatches.call(this, xdb);

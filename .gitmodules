@@ -1,0 +1,3 @@
+[submodule "qa/src/AvlMap"]
+	path = qa/src/AvlMap
+	url = https://github.com/availabs/AvlMap.git

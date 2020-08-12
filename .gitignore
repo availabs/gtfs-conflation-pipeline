@@ -2,6 +2,8 @@ node_modules/
 data/
 output/
 notes/
+cdta/
+cdta_outputs/
 
 # https://stackoverflow.com/a/32262670/3970755
 *.bak
