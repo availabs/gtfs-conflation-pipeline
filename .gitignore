@@ -14,3 +14,8 @@ cdta_outputs/
 *.tar.xz
 
 backups/
+
+test.js
+
+*/
+!src/
