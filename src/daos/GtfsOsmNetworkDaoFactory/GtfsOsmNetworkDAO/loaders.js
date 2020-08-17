@@ -64,8 +64,8 @@ async function loadRawShStMatches(xdb) {
         shstReferenceId,
         section: [section_start, section_end],
         pp_shape_id,
-        pp_shape_index
-      }
+        pp_shape_index,
+      },
     } = matchFeature;
 
     roundGeometryCoordinates(matchFeature);
@@ -83,7 +83,7 @@ async function loadRawShStMatches(xdb) {
       `${sectionEndRounded}`,
       `${osrm_dir}`,
       `${featureLenKm}`,
-      `${JSON.stringify(matchFeature)}`
+      `${JSON.stringify(matchFeature)}`,
     ]);
   }
 }
@@ -140,7 +140,7 @@ function loadProcessedShstMatches(xdb) {
 
       for (let path_index = 0; path_index < paths.length; ++path_index) {
         const {
-          properties: { shape_id, shape_index, pathDecompositionInfo }
+          properties: { shape_id, shape_index, pathDecompositionInfo },
         } = paths[path_index];
 
         if (_.isEmpty(pathDecompositionInfo)) {
@@ -157,8 +157,8 @@ function loadProcessedShstMatches(xdb) {
             shstReferenceId: shst_reference = null,
             shstReferenceSection: [
               shst_ref_start = null,
-              shst_ref_end = null
-            ] = []
+              shst_ref_end = null,
+            ] = [],
           } = pathDecompositionInfo[path_edge_index];
 
           insertStmt.run([
@@ -169,7 +169,7 @@ function loadProcessedShstMatches(xdb) {
             shst_match_id,
             shst_reference,
             shst_ref_start,
-            shst_ref_end
+            shst_ref_end,
           ]);
         }
       }
@@ -203,5 +203,5 @@ async function load() {
 }
 
 module.exports = {
-  load
+  load,
 };

@@ -19,8 +19,8 @@
 
 // const { inspect } = require("util");
 
-const turf = require("@turf/turf");
-const _ = require("lodash");
+// const turf = require("@turf/turf");
+// const _ = require("lodash");
 
 const computeSubGraphComponentsTraversals = require("./computeSubGraphComponentsTraversals");
 const computeShapeLevelPathCombinationProperties = require("./computeShapeLevelPathCombinationProperties");
@@ -54,19 +54,19 @@ class ShstMatchesSubGraphBuilder {
       this.shstMatchesById
     );
 
-    const shapeFeatureCollection = turf.featureCollection(
-      gtfsNetEdgesShstMatches.map(({ gtfsNetworkEdge }) => {
-        const f = {
-          ...gtfsNetworkEdge,
-          properties: _.pick(gtfsNetworkEdge.properties, [
-            "shape_id",
-            "shape_index"
-          ])
-        };
+    // const shapeFeatureCollection = turf.featureCollection(
+    // gtfsNetEdgesShstMatches.map(({ gtfsNetworkEdge }) => {
+    // const f = {
+    // ...gtfsNetworkEdge,
+    // properties: _.pick(gtfsNetworkEdge.properties, [
+    // "shape_id",
+    // "shape_index"
+    // ])
+    // };
 
-        return f;
-      })
-    );
+    // return f;
+    // })
+    // );
 
     const { chosenPaths } =
       computeShapeLevelPathCombinationProperties(this) || {};

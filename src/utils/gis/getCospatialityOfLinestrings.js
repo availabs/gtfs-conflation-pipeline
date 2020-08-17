@@ -20,8 +20,6 @@ const getGdalLineString = f => {
   const type = turf.getType(f);
 
   if (type !== "LineString") {
-    // console.error("%".repeat(30));
-    // console.error(JSON.stringify(f, null, 4));
     throw new Error("GeoJSON Feature must be a LineString");
   }
 
@@ -33,8 +31,6 @@ const getGdalLineString = f => {
 
   return lineString;
 };
-
-// let counter = 0;
 
 const removeRedundantCoords = coords =>
   coords.filter((coord, i) => !_.isEqual(coords[i - 1], coord));
@@ -301,7 +297,6 @@ const geometryToGeoJson = (geometry, removeShortSegments) => {
 
     if (removeShortSegments) {
       lineStrings = lineStrings.filter(f => {
-        // console.log(JSON.stringify(f, null, 4));
         const len = turf.length(f);
         return len > SHORT_SEG_LENGTH_THOLD;
       });
@@ -387,15 +382,8 @@ function getCospatialityOfLinestrings(S, T) {
       return null;
     }
 
-    // console.error(JSON.stringify({ sIntxnFeature, tIntxnFeature }, null, 4));
-
     const sIntxnLineStrings = lineMerge(sIntxnFeature);
     const tIntxnLineStrings = lineMerge(tIntxnFeature);
-
-    // console.error("*".repeat(30));
-    // console.error(
-    // JSON.stringify({ sIntxnLineStrings, tIntxnLineStrings }, null, 4)
-    // );
 
     const cospatiality = sIntxnLineStrings.reduce((acc, sIntxnLineString) => {
       const sIntxn2 = getGdalLineString(sIntxnLineString);
@@ -468,14 +456,6 @@ function getCospatialityOfLinestrings(S, T) {
           );
         }
 
-        // if (++counter % 1000 === 0) {
-        // console.debug(counter);
-        // }
-
-        // if (counter === 100) {
-        // process.exit();
-        // }
-
         const [sIntxnAnalysis, tIntxnAnalysis, sDiffAnalysis, tDiffAnalysis] = [
           [S, sIntersection],
           [T, tIntersection],
@@ -502,28 +482,6 @@ function getCospatialityOfLinestrings(S, T) {
           }
         });
 
-        // console.log(
-        // JSON.stringify(
-        // {
-        // // sIntersection,
-        // sLen: turf.length(S),
-        // sIntxnAnalysis,
-        // // tIntxnAnalysis,
-        // sDiffAnalysis
-        // // tDiffAnalysis
-        // // sCoords: turf.getCoords(S),
-        // // sDifference,
-        // // tIntersection,
-        // // tCoords: turf.getCoords(T),
-        // // tDifference,
-        // // S,
-        // // T: { ...T, properties: {} }
-        // },
-        // null,
-        // 4
-        // )
-        // );
-
         const { sIntxnOffsets, tIntxnOffsets } = getSubGeometryOffsets({
           sIntxnAnalysis,
           sDiffAnalysis,
@@ -547,7 +505,6 @@ function getCospatialityOfLinestrings(S, T) {
     // console.error(JSON.stringify({ S, T }, null, 4));
     console.error(err);
     process.exit();
-    // return null;
   }
 
   // Keep linter happy
