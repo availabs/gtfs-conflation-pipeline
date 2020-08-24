@@ -191,7 +191,7 @@ const unionPathLineStrings = (pathLineStrings, shstMatchesById) => {
           const intxnShstMatchIdsLength = intxnShstMatchIds.length;
 
           if (intxnShstMatchIdsLength === 0) {
-            // return null; // ??? I think this was a bug. ???
+            // return null; // ??? Why was I returning null? I think this was a bug. ???
             continue;
           }
 

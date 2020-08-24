@@ -1,4 +1,4 @@
-/* eslint-disable no-continue, no-cond-assign, jsdoc/require-jsdoc, no-param-reassign */
+/* eslint-disable no-continue, no-cond-assign, jsdoc/require-jsdoc, no-param-reassign, no-constant-condition */
 
 // MODULE PURPOSE: Cherry-pick the best shstMatches across the GTFS Shape.
 //
@@ -136,7 +136,7 @@ const findNonAxiomaticPaths = ({ chosenPaths, aggregatedSummary }) => {
       }
 
       const {
-        gtfsNetworkEdge,
+        // gtfsNetworkEdge,
         // shape_id,
         // shstMatches,
         pathLineStrings
@@ -197,8 +197,6 @@ const findNonAxiomaticPaths = ({ chosenPaths, aggregatedSummary }) => {
         }
       }
 
-      // console.log(JSON.stringify({ cospatialities }, null, 4));
-
       // FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
       // This is O(2^n). n would seem to be bound such that we don't have much concern.
       // However, we must come up with a better algo/data structure.
@@ -213,20 +211,30 @@ const findNonAxiomaticPaths = ({ chosenPaths, aggregatedSummary }) => {
             //     their inclusion/exclusion.
             for (let j = 0; j < i; ++j) {
               const otherCospat = cospatialities[j];
+
               if (otherCospat === null) {
                 continue;
               }
 
-              const comboCospat = otherCospat[i];
+              const comboCospat = otherCospat[i] && otherCospat[i].cospat;
 
-              const overlapLen =
-                comboCospat !== null &&
-                Math.max(
-                  _.first(comboCospat.cospat).sIntxnOffsets.endAlong -
-                    _.first(comboCospat.cospat).sIntxnOffsets.startAlong,
-                  _.first(comboCospat.cospat).tIntxnOffsets.endAlong -
-                    _.first(comboCospat.cospat).tIntxnOffsets.startAlong
-                );
+              if (comboCospat === null) {
+                continue;
+              }
+
+              const sOverLapLen = comboCospat.reduce(
+                (acc3, { sIntxnOffsets: { startAlong, endAlong } }) =>
+                  acc3 + endAlong - startAlong,
+                0
+              );
+
+              const tOverLapLen = comboCospat.reduce(
+                (acc3, { tIntxnOffsets: { startAlong, endAlong } }) =>
+                  acc3 + endAlong - startAlong,
+                0
+              );
+
+              const overlapLen = Math.max(sOverLapLen, tOverLapLen);
 
               const overlapExceedsThld = overlapLen > maxOverlapThld;
 
@@ -235,8 +243,6 @@ const findNonAxiomaticPaths = ({ chosenPaths, aggregatedSummary }) => {
               }
             }
           }
-
-          // console.log(JSON.stringify({ constrainers }, null, 4));
 
           if (constrainers.length) {
             assert(i !== 0);
@@ -264,7 +270,6 @@ const findNonAxiomaticPaths = ({ chosenPaths, aggregatedSummary }) => {
           //    constraint on the later path(s).
           let mustFork = constrainers.length > 0 && cospat !== null;
           if (!mustFork) {
-            // console.log("@".repeat(10));
             // Does this candidate path overlap later candidate paths?
             for (let j = i + 1; j < cospatialities.length; ++j) {
               const otherCospat = cospatialities[j];
@@ -286,7 +291,6 @@ const findNonAxiomaticPaths = ({ chosenPaths, aggregatedSummary }) => {
               const overlapExceedsThld = overlapLen > maxOverlapThld;
 
               if (overlapExceedsThld) {
-                // console.log("overlapExceedsThld", j);
                 mustFork = true;
                 break;
               }
