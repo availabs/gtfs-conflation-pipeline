@@ -1,10 +1,12 @@
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
-const createMapSegmentsCospatialityTable = db =>
+const createMapSegmentsCospatialityTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.map_segments_cospatiality(
       conflation_map_id  INTEGER,
       gtfs_matches_id    INTEGER,
+
+      overlap_idx        INTEGER,
 
       intersection_len   REAL,
 
@@ -20,55 +22,30 @@ const createMapSegmentsCospatialityTable = db =>
     ) WITHOUT ROWID ;
   `);
 
-const createGtfsMatchesConflationMapJoinTable = db =>
+const createGtfsMatchesConflationMapJoinTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.gtfs_matches_conflation_map_join(
+      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+      gtfs_shape_id      INTEGER,
+      gtfs_shape_index   INTEGER,
+
       conflation_map_id  INTEGER,
-      gtfs_matches_id    INTEGER,
 
-      PRIMARY KEY(conflation_map_id, gtfs_matches_id)
-    ) WITHOUT ROWID ;
-  `);
+      conf_map_pre_len   REAL,
+      conf_map_post_len  REAL,
 
-const createGtfsCountsConflationMapJoinTable = db =>
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS ${SCHEMA}.gtfs_counts_conflation_map_join(
-      conflation_map_id  INTEGER,
-      route_id           TEXT,
-      dow                INTEGER,
-      epoch              INTEGER,
-      count              INTEGER,
+      along_idx          INTEGER,
 
-      PRIMARY KEY(conflation_map_id, route_id, dow, epoch)
-    ) WITHOUT ROWID ;
-  `);
-
-const createGtfsRoutesConflationMapJoinTable = db =>
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS ${SCHEMA}.gtfs_routes_conflation_map_join(
-      conflation_map_id  INTEGER,
-      routes             TEXT, -- JSON array
-
-      PRIMARY KEY(conflation_map_id)
-    ) WITHOUT ROWID ;
-  `);
-
-const createConflationMapAadtBreakdownTable = db =>
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS ${SCHEMA}.conflation_map_aadt_breakdown(
-      conflation_map_id  INTEGER,
-      aadt               INTEGER,
-      aadt_by_peak       TEXT, -- JSON
-      aadt_by_route      TEXT, -- JSON
-
-      PRIMARY KEY(conflation_map_id)
-    ) WITHOUT ROWID ;
+      UNIQUE (
+        gtfs_shape_id,
+        gtfs_shape_index,
+        conflation_map_id,
+        along_idx
+      )
+    ) ;
   `);
 
 module.exports = {
   createMapSegmentsCospatialityTable,
   createGtfsMatchesConflationMapJoinTable,
-  createGtfsCountsConflationMapJoinTable,
-  createGtfsRoutesConflationMapJoinTable,
-  createConflationMapAadtBreakdownTable
 };

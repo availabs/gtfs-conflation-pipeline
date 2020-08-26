@@ -12,7 +12,7 @@ const GDAL_BUFF_DIST = 5e-7;
 const SEGMENTS = 100;
 const SHORT_SEG_LENGTH_THOLD = 0.002; // 2 meters
 
-const getGdalLineString = f => {
+const getGdalLineString = (f) => {
   if (f === null) {
     return null;
   }
@@ -32,7 +32,7 @@ const getGdalLineString = f => {
   return lineString;
 };
 
-const removeRedundantCoords = coords =>
+const removeRedundantCoords = (coords) =>
   coords.filter((coord, i) => !_.isEqual(coords[i - 1], coord));
 
 const analyze = (orig, sub) => {
@@ -46,11 +46,11 @@ const analyze = (orig, sub) => {
   const origLen = turf.length(orig);
 
   const subCoords = removeRedundantCoords(turf.getCoords(sub));
-  const subPoints = subCoords.map(coord => turf.point(coord));
+  const subPoints = subCoords.map((coord) => turf.point(coord));
 
   const overlapInfo = subPoints.reduce((acc, pt, i) => {
     const {
-      properties: { location: snappedPtDistAlong }
+      properties: { location: snappedPtDistAlong },
     } = turf.nearestPointOnLine(orig, pt);
     const snappedPtDistFromEnd = origLen - snappedPtDistAlong;
 
@@ -60,7 +60,7 @@ const analyze = (orig, sub) => {
       distFromPrevPt: null,
       distFromNextPt: null,
       snappedPtDistFromPrevSnappedPt: null,
-      snappedPtDistFromNextSnappedPt: null
+      snappedPtDistFromNextSnappedPt: null,
     };
 
     const prev = _.last(acc);
@@ -124,13 +124,13 @@ const getSubGeometryOffsets = (
     sIntxnAnalysis,
     tIntxnAnalysis,
     sDiffAnalysis,
-    tDiffAnalysis
-  ].map(subAnalysis => {
+    tDiffAnalysis,
+  ].map((subAnalysis) => {
     if (subAnalysis === null) {
       return null;
     }
 
-    return subAnalysis.map(subElemAnalysis => {
+    return subAnalysis.map((subElemAnalysis) => {
       let startAlong = _.first(subElemAnalysis).snappedPtDistAlong;
       let startFromEnd = _.first(subElemAnalysis).snappedPtDistFromEnd;
 
@@ -151,7 +151,7 @@ const getSubGeometryOffsets = (
         startAlong,
         startFromEnd,
         endAlong,
-        endFromEnd
+        endFromEnd,
       };
     });
   });
@@ -161,7 +161,7 @@ const getSubGeometryOffsets = (
     sIntxnOffsets: sIntxnOffsets[0],
     sDiffOffsets,
     tIntxnOffsets: tIntxnOffsets[0],
-    tDiffOffsets
+    tDiffOffsets,
   };
 };
 
@@ -179,7 +179,7 @@ const lineMerge = (feature, { tolerance = 0 } = {}) => {
 
   const multiCoords = turf
     .getCoords(feature)
-    .filter(c => Array.isArray(_.uniqWith(c, _.isEqual)) && c.length > 1)
+    .filter((c) => Array.isArray(_.uniqWith(c, _.isEqual)) && c.length > 1)
     .map(removeRedundantCoords);
 
   if (multiCoords.length === 0) {
@@ -239,7 +239,7 @@ const lineMerge = (feature, { tolerance = 0 } = {}) => {
   );
 
   const mergedLineStrings = mergedCoords
-    .map(coords => turf.lineString(coords))
+    .map((coords) => turf.lineString(coords))
     .sort((a, b) => turf.length(a) - turf.length(b))
     .filter((line, i, others) => {
       if (tolerance === 0) {
@@ -252,7 +252,9 @@ const lineMerge = (feature, { tolerance = 0 } = {}) => {
         const { features: linePts } = turf.explode(line);
 
         if (
-          !linePts.every(pt => turf.pointToLineDistance(pt, other) > tolerance)
+          !linePts.every(
+            (pt) => turf.pointToLineDistance(pt, other) > tolerance
+          )
         ) {
           return false;
         }
@@ -296,7 +298,7 @@ const geometryToGeoJson = (geometry, removeShortSegments) => {
     let lineStrings = lineMerge(feature, { tolerance: SHORT_SEG_LENGTH_THOLD });
 
     if (removeShortSegments) {
-      lineStrings = lineStrings.filter(f => {
+      lineStrings = lineStrings.filter((f) => {
         const len = turf.length(f);
         return len > SHORT_SEG_LENGTH_THOLD;
       });
@@ -308,7 +310,7 @@ const geometryToGeoJson = (geometry, removeShortSegments) => {
 
     return lineStrings.length === 1
       ? lineStrings[0]
-      : turf.multiLineString(lineStrings.map(f => turf.getCoords(f)));
+      : turf.multiLineString(lineStrings.map((f) => turf.getCoords(f)));
   }
 
   if (
@@ -375,8 +377,8 @@ function getCospatialityOfLinestrings(S, T) {
             S,
             T,
             sIntxnFeature,
-            tIntxnFeature
-          }
+            tIntxnFeature,
+          },
         })
       );
       return null;
@@ -388,7 +390,7 @@ function getCospatialityOfLinestrings(S, T) {
     const cospatiality = sIntxnLineStrings.reduce((acc, sIntxnLineString) => {
       const sIntxn2 = getGdalLineString(sIntxnLineString);
 
-      const cospats = tIntxnLineStrings.map(tIntxnLineString => {
+      const cospats = tIntxnLineStrings.map((tIntxnLineString) => {
         const tIntxn2 = getGdalLineString(tIntxnLineString);
 
         if (sIntxn2 === null || tIntxn2 === null) {
@@ -401,8 +403,8 @@ function getCospatialityOfLinestrings(S, T) {
                   S,
                   T,
                   sIntxn2: sIntxn2 && geometryToGeoJson(sIntxn),
-                  tIntxn2: tIntxn2 && geometryToGeoJson(tIntxn)
-                }
+                  tIntxn2: tIntxn2 && geometryToGeoJson(tIntxn),
+                },
               })
             );
           }
@@ -450,8 +452,8 @@ function getCospatialityOfLinestrings(S, T) {
                 tCoords: turf.getCoords(T),
                 tDifference,
                 S,
-                T: { ...T, properties: {} }
-              }
+                T: { ...T, properties: {} },
+              },
             })
           );
         }
@@ -460,7 +462,7 @@ function getCospatialityOfLinestrings(S, T) {
           [S, sIntersection],
           [T, tIntersection],
           [S, sDifference],
-          [T, tDifference]
+          [T, tDifference],
         ].map(([orig, sub]) => {
           if (sub === null) {
             return null;
@@ -471,7 +473,7 @@ function getCospatialityOfLinestrings(S, T) {
               ? [analyze(orig, sub)]
               : turf
                   .getCoords(sub)
-                  .map(coords => analyze(orig, turf.lineString(coords)));
+                  .map((coords) => analyze(orig, turf.lineString(coords)));
           } catch (err) {
             console.error("@".repeat(15));
             console.error(turf.getType(sub));
@@ -486,7 +488,7 @@ function getCospatialityOfLinestrings(S, T) {
           sIntxnAnalysis,
           sDiffAnalysis,
           tIntxnAnalysis,
-          tDiffAnalysis
+          tDiffAnalysis,
         });
 
         // Array because in the future we need to handle discontinuous intersections.
@@ -494,13 +496,13 @@ function getCospatialityOfLinestrings(S, T) {
         //   for each continuous intersection segment.
         return { sLen, sIntxnOffsets, tLen, tIntxnOffsets };
       });
-      acc.push(...cospats.filter(c => c !== null));
+      acc.push(...cospats.filter((c) => c !== null));
       return acc;
     }, []);
 
     return _.isEmpty(cospatiality)
       ? null
-      : cospatiality.filter(c => c !== null);
+      : cospatiality.filter((c) => c !== null);
   } catch (err) {
     // console.error(JSON.stringify({ S, T }, null, 4));
     console.error(err);

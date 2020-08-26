@@ -11,7 +11,23 @@ const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 const { createConflationMapTable } = require("./createTableFns");
 const roundGeometryCoordinates = require("../../../utils/roundGeometryCoordinates");
 
-const PRECISION = 6;
+const targetMaps = [
+  "ris_2016",
+  "ris_2017",
+  "ris_2018",
+  "ris_2019",
+  "npmrds_2017",
+  "npmrds_2019",
+];
+
+const usefulTargetMapProperties = [
+  "targetMapId",
+  "targetMapMesoId",
+  "targetMapMacroId",
+  "targetMapMegaId",
+  "targetMapNetHrchyRank",
+  "targetMapMesoLevelIdx",
+];
 
 function load(conflationMapSqlitePath) {
   try {
@@ -50,24 +66,20 @@ function load(conflationMapSqlitePath) {
       const feature = JSON.parse(fStr);
 
       const {
-        properties: { shstReferenceId: shstRef = null }
+        properties: { shstReferenceId: shstRef = null },
       } = feature;
 
       if (_.isNil(shstRef)) {
         continue;
       }
 
-      feature.properties = {
-        shstRef,
-        startDist: _.round(
-          _.get(feature, ["properties", "startDist"], null),
-          PRECISION
-        ),
-        endDist: _.round(
-          _.get(feature, ["properties", "endDist"], null),
-          PRECISION
-        )
-      };
+      // We may be able to use these properties to string together
+      //   topologically sorted sequences of ShSt references.
+      for (const targetMap of targetMaps) {
+        feature.properties[targetMap] = feature.properties[targetMap]
+          ? _.pick(feature.properties[targetMap], usefulTargetMapProperties)
+          : null;
+      }
 
       roundGeometryCoordinates(feature);
 
@@ -82,5 +94,5 @@ function load(conflationMapSqlitePath) {
 }
 
 module.exports = {
-  load
+  load,
 };

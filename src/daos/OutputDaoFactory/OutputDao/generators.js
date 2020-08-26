@@ -9,22 +9,19 @@ const _ = require("lodash");
 const {
   GEOJSON_GTFS,
   GTFS_NETWORK,
-  GTFS_OSM_NETWORK
 } = require("../../../constants/databaseSchemaNames");
-
-// const supportedLayers = [GEOJSON_GTFS, GTFS_NETWORK];
-const supportedLayers = [GEOJSON_GTFS];
 
 const GeoJsonGtfsDAOFactory = require("../../GeoJsonGtfsDAOFactory");
 const GtfsNetworkDAOFactory = require("../../GtfsNetworkDAOFactory");
 const GtfsOsmNetworkDaoFactory = require("../../GtfsOsmNetworkDaoFactory");
+const GtfsConflationMapJoinDAOFactory = require("../../GtfsConflationMapJoinDAOFactory");
 
 const wgs84 = gdal.SpatialReference.fromEPSG(4326);
 
 const addFieldToLayer = (layer, name, type) =>
   layer.fields.add(new gdal.FieldDefn(name, type));
 
-const addGeoJsonStopsLayer = dataset => {
+const addGeoJsonStopsLayer = (dataset) => {
   const layer = dataset.layers.create(
     `${GEOJSON_GTFS}_stops`,
     wgs84,
@@ -34,48 +31,48 @@ const addGeoJsonStopsLayer = dataset => {
   const propDefs = {
     stop_id: {
       fieldName: "stop_id",
-      type: gdal.OFTString
+      type: gdal.OFTString,
     },
     stop_code: {
       fieldName: "stop_code",
-      type: gdal.OFTString
+      type: gdal.OFTString,
     },
     stop_name: {
       fieldName: "stop_name",
-      type: gdal.OFTString
+      type: gdal.OFTString,
     },
     stop_desc: {
       fieldName: "stop_desc",
-      type: gdal.OFTString
+      type: gdal.OFTString,
     },
     stop_lat: {
       fieldName: "stop_lat",
-      type: gdal.OFTReal
+      type: gdal.OFTReal,
     },
     stop_lon: {
       fieldName: "stop_lon",
-      type: gdal.OFTReal
+      type: gdal.OFTReal,
     },
     zone_id: {
       fieldName: "zone_id",
-      type: gdal.OFTString
+      type: gdal.OFTString,
     },
     stop_url: {
       fieldName: "stop_url",
-      type: gdal.OFTString
+      type: gdal.OFTString,
     },
     location_type: {
       fieldName: "loc_type",
-      type: gdal.OFTString
+      type: gdal.OFTString,
     },
     stop_timezone: {
       fieldName: "stop_tmzn",
-      type: gdal.OFTString
+      type: gdal.OFTString,
     },
     wheelchair_boarding: {
       fieldName: "wchair_bdn",
-      type: gdal.OFTReal
-    }
+      type: gdal.OFTReal,
+    },
   };
 
   _.forEach(propDefs, ({ type, fieldName }) =>
@@ -95,7 +92,7 @@ const addGeoJsonStopsLayer = dataset => {
   for (const geojsonPoint of iter) {
     const gdalFeature = new gdal.Feature(layer);
 
-    Object.keys(geojsonPoint.properties).forEach(prop => {
+    Object.keys(geojsonPoint.properties).forEach((prop) => {
       if (!propDefs[prop]) {
         return;
       }
@@ -116,7 +113,7 @@ const addGeoJsonStopsLayer = dataset => {
   }
 };
 
-const addGeoJsonShapesLayer = dataset => {
+const addGeoJsonShapesLayer = (dataset) => {
   const layer = dataset.layers.create(
     `${GEOJSON_GTFS}_shapes`,
     wgs84,
@@ -146,7 +143,7 @@ const addGeoJsonShapesLayer = dataset => {
   }
 };
 
-const addGtfsNetworkLayer = dataset => {
+const addGtfsNetworkLayer = (dataset) => {
   const layer = dataset.layers.create(
     `${GTFS_NETWORK}_shape_segments`,
     wgs84,
@@ -159,7 +156,7 @@ const addGtfsNetworkLayer = dataset => {
     ["from_stops", gdal.OFTString],
     ["to_stops", gdal.OFTString],
     ["start_dist", gdal.OFTReal],
-    ["stop_dist", gdal.OFTReal]
+    ["stop_dist", gdal.OFTReal],
   ];
 
   const definedFields = fieldDefinitionPairs.map(([field]) => field);
@@ -175,7 +172,7 @@ const addGtfsNetworkLayer = dataset => {
   for (const geojsonLineString of iter) {
     const gdalFeature = new gdal.Feature(layer);
 
-    Object.keys(geojsonLineString.properties).forEach(prop => {
+    Object.keys(geojsonLineString.properties).forEach((prop) => {
       const fieldName = prop
         .replace(/^shape_index$/, "shape_idx")
         .replace(/^from_stop_ids$/, "from_stops")
@@ -206,7 +203,7 @@ const addGtfsNetworkLayer = dataset => {
   }
 };
 
-const addShstMatchesLayer = dataset => {
+const addShstMatchesLayer = (dataset) => {
   const layer = dataset.layers.create(`shst_matches`, wgs84, gdal.LineString);
 
   // id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -223,7 +220,7 @@ const addShstMatchesLayer = dataset => {
     ["id", gdal.OFTInteger],
     ["shst_ref", gdal.OFTString],
     ["shape_id", gdal.OFTString],
-    ["shape_idx", gdal.OFTInteger]
+    ["shape_idx", gdal.OFTInteger],
   ];
 
   const definedFields = fieldDefinitionPairs.map(([field]) => field);
@@ -239,7 +236,7 @@ const addShstMatchesLayer = dataset => {
   for (const shstMatch of iter) {
     const gdalFeature = new gdal.Feature(layer);
 
-    Object.keys(shstMatch.properties).forEach(prop => {
+    Object.keys(shstMatch.properties).forEach((prop) => {
       const fieldName = prop
         .replace(/^shst_reference$/, "shst_ref")
         .replace(/^pp_shape_id$/, "shape_id")
@@ -270,7 +267,7 @@ const addShstMatchesLayer = dataset => {
   }
 };
 
-const addChosenShstMatchesLayer = dataset => {
+const addChosenShstMatchesLayer = (dataset) => {
   const layer = dataset.layers.create(
     `chosen_shst_matches`,
     wgs84,
@@ -281,7 +278,7 @@ const addChosenShstMatchesLayer = dataset => {
     ["id", gdal.OFTInteger],
     ["shst_ref", gdal.OFTString],
     ["shape_id", gdal.OFTString],
-    ["shape_idx", gdal.OFTInteger]
+    ["shape_idx", gdal.OFTInteger],
   ];
 
   const definedFields = fieldDefinitionPairs.map(([field]) => field);
@@ -300,7 +297,7 @@ const addChosenShstMatchesLayer = dataset => {
     console.log();
     const gdalFeature = new gdal.Feature(layer);
 
-    Object.keys(shstMatch.properties).forEach(prop => {
+    Object.keys(shstMatch.properties).forEach((prop) => {
       const fieldName = prop
         .replace(/^shstReferenceId$/, "shst_ref")
         .replace(/^pp_shape_id$/, "shape_id")
@@ -331,6 +328,74 @@ const addChosenShstMatchesLayer = dataset => {
   }
 };
 
+const addConflationJoinLayer = (dataset) => {
+  const layer = dataset.layers.create(
+    `gtfs_conflation_map_join`,
+    wgs84,
+    gdal.MultiLineString
+  );
+
+  const fieldDefinitionPairs = [
+    ["id", gdal.OFTInteger],
+    ["gtfsshp", gdal.OFTString],
+    ["gtfsshpidx", gdal.OFTString],
+  ];
+
+  const definedFields = fieldDefinitionPairs.map(([field]) => field);
+
+  for (const [name, type] of fieldDefinitionPairs) {
+    addFieldToLayer(layer, name, type);
+  }
+
+  const dao = GtfsConflationMapJoinDAOFactory.getDAO();
+
+  const iter = dao.makeGtfsConflationMapJoinIterator();
+
+  for (const multiLineString of iter) {
+    const gdalFeature = new gdal.Feature(layer);
+
+    Object.keys(multiLineString.properties).forEach((prop) => {
+      const fieldName = prop
+        .replace(/^gtfs_shape_id$/, "gtfsshp")
+        .replace(/^gtfs_shape_index$/, "gtfsshpidx");
+
+      if (definedFields.includes(fieldName)) {
+        let v = multiLineString.properties[prop];
+
+        if (_.isNil(v)) {
+          v = null;
+        } else if (typeof v !== "string") {
+          v = JSON.stringify(v);
+        }
+
+        gdalFeature.fields.set(fieldName, v);
+      }
+    });
+
+    const multiLS = new gdal.MultiLineString();
+
+    const geoms = turf.getCoords(multiLineString);
+
+    for (let i = 0; i < geoms.length; ++i) {
+      const geom = geoms[i];
+
+      const lineString = new gdal.LineString();
+
+      for (let j = 0; j < geom.length; ++j) {
+        const [lon, lat] = geom[j];
+
+        lineString.points.add(new gdal.Point(lon, lat));
+      }
+
+      multiLS.children.add(lineString);
+    }
+
+    gdalFeature.setGeometry(multiLS);
+
+    layer.features.add(gdalFeature);
+  }
+};
+
 function outputShapefile(output_file) {
   if (!output_file) {
     console.error("The output_file parameter is required");
@@ -344,15 +409,16 @@ function outputShapefile(output_file) {
 
   const dataset = gdal.open(output_file, "w", "ESRI Shapefile");
 
-  addGeoJsonStopsLayer(dataset);
-  addGeoJsonShapesLayer(dataset);
-  addGtfsNetworkLayer(dataset);
+  // addGeoJsonStopsLayer(dataset);
+  // addGeoJsonShapesLayer(dataset);
+  // addGtfsNetworkLayer(dataset);
   // addShstMatchesLayer(dataset);
-  addChosenShstMatchesLayer(dataset);
+  // addChosenShstMatchesLayer(dataset);
+  addConflationJoinLayer(dataset);
 
   dataset.close();
 }
 
 module.exports = {
-  outputShapefile
+  outputShapefile,
 };

@@ -11,6 +11,8 @@ const gtfs_as_geojson = require("./src/pipeline_transforms/gtfs_as_geojson/yargs
 const gtfs_network = require("./src/pipeline_transforms/gtfs_network/yargs_wrapper");
 const gtfs_osm_network = require("./src/pipeline_transforms/gtfs_osm_network/yargs_wrapper");
 const scheduled_bus_traffic = require("./src/pipeline_transforms/scheduled_bus_traffic/yargs_wrapper");
+const conflation_map = require("./src/pipeline_transforms/conflation_map/yargs_wrapper");
+const gtfs_conflation_map_join = require("./src/pipeline_transforms/gtfs_conflation_map_join/yargs_wrapper");
 const output = require("./src/pipeline_transforms/output/yargs_wrapper");
 
 function addOutputDirToEnvironment(argv) {
@@ -40,6 +42,8 @@ yargs
   .command(gtfs_network)
   .command(gtfs_osm_network)
   .command(scheduled_bus_traffic)
+  .command(conflation_map)
+  .command(gtfs_conflation_map_join)
   .command(output)
   .demandCommand()
   .recommendCommands()
