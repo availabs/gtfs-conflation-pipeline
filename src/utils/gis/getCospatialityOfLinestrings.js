@@ -502,7 +502,10 @@ function getCospatialityOfLinestrings(S, T) {
 
     return _.isEmpty(cospatiality)
       ? null
-      : cospatiality.filter((c) => c !== null);
+      : _.uniqWith(
+          cospatiality.filter((c) => c !== null),
+          _.isEqual
+        );
   } catch (err) {
     // console.error(JSON.stringify({ S, T }, null, 4));
     console.error(err);

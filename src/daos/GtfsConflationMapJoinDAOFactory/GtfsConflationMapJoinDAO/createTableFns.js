@@ -6,8 +6,6 @@ const createMapSegmentsCospatialityTable = (db) =>
       conflation_map_id  INTEGER,
       gtfs_matches_id    INTEGER,
 
-      overlap_idx        INTEGER,
-
       intersection_len   REAL,
 
       conf_map_seg_len   REAL,

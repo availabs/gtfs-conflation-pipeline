@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-syntax, jsdoc/require-jsdoc, no-continue, no-underscore-dangle */
 
 /*
-    gtfs_osm_network> \d gtfs_shape_shst_match_paths                                                                                                                                                                                               
+    gtfs_osm_network> \d gtfs_shape_shst_match_paths
     +-----+------------------+---------+---------+------------+----+
     | cid | name             | type    | notnull | dflt_value | pk |
     +-----+------------------+---------+---------+------------+----+
@@ -15,7 +15,7 @@
     | 7   | shst_ref_end     | REAL    | 0       | <null>     | 0  |
     +-----+------------------+---------+---------+------------+----+
 
-    conflation_map.patched> \d conflation_map                                                                                
+    conflation_map.patched> \d conflation_map
 
     +-----+---------+---------+---------+------------+----+
     | cid | name    | type    | notnull | dflt_value | pk |
@@ -25,7 +25,7 @@
     +-----+---------+---------+---------+------------+----+
 
     conflation_map.feature.properties includes
-    
+
       * startDist
       * endDist
       * shstReferenceId
@@ -43,6 +43,7 @@
 //   Hopefully that means the one with the longest length as well.
 //     TODO: Confirm we aren't using a truncated geometry for a Shst Reference
 
+const _ = require("lodash");
 const db = require("../../../services/DbService");
 
 const {
@@ -71,8 +72,6 @@ function loadCospatialityTable() {
       conflation_map_id  INTEGER,
       gtfs_matches_id    INTEGER,
 
-      overlap_idx        INTEGER,
-
       intersection_len   REAL,
 
       conf_map_seg_len   REAL,
@@ -91,8 +90,6 @@ function loadCospatialityTable() {
     INSERT INTO ${SCHEMA}.map_segments_cospatiality (
         conflation_map_id,
         gtfs_matches_id,
-        
-        overlap_idx,
 
         intersection_len,
 
@@ -104,7 +101,7 @@ function loadCospatialityTable() {
         gtfs_map_pre_len,
         gtfs_map_post_len
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ;`);
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ;`);
 
   // Iterate over all conflation_map/gtfs_matches pairs that share a shst_reference
 
@@ -122,7 +119,7 @@ function loadCospatialityTable() {
       osrm_dir        TEXT,
       feature_len_km  REAL,
       feature         TEXT,
-      
+
       UNIQUE (shape_id, shape_index, shst_reference, section_start, section_end)
     ) ;
 
@@ -135,7 +132,7 @@ function loadCospatialityTable() {
       shst_reference    TEXT,
       shst_ref_start    REAL,
       shst_ref_end      REAL,
-      
+
       PRIMARY KEY (gtfs_shape_id, gtfs_shape_index, path_index, path_edge_index)
     ) WITHOUT ROWID;
   */
@@ -194,13 +191,32 @@ function loadCospatialityTable() {
         ]
     */
 
-    const cospatiality = getCospatialityOfLinestrings(
+    let cospatiality = getCospatialityOfLinestrings(
       conflationMapFeature,
       gtfsMatchesFeature
     );
 
     // If cospatiality is null, there is no intersection.
     if (cospatiality !== null) {
+      if (cospatiality.length > 1) {
+        // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+        //   Think this through more carefully.
+        //   Some geometries may invalidate the inherent assumptions.
+        const { sLen, tLen } = _.first(cospatiality);
+        cospatiality = {
+          sLen,
+          sIntxnOffsets: {
+            startAlong: _(cospatiality).map("sIntxnOffsets.startAlong").min(),
+            endFromEnd: _(cospatiality).map("sIntxnOffsets.endFromEnd").min(),
+          },
+          tLen,
+          tIntxnOffsets: {
+            startAlong: _(cospatiality).map("tIntxnOffsets.startAlong").min(),
+            endFromEnd: _(cospatiality).map("tIntxnOffsets.endFromEnd").min(),
+          },
+        };
+      }
+
       for (
         let overlap_idx = 0;
         overlap_idx < cospatiality.length;
@@ -225,7 +241,6 @@ function loadCospatialityTable() {
             INSERT INTO ${SCHEMA}.map_segments_cospatiality (
                 conflation_map_id,
                 gtfs_matches_id,
-                overlap_idx,
 
                 intersection_len,
 
@@ -242,7 +257,6 @@ function loadCospatialityTable() {
           insertStmt.run([
             conflation_map_id,
             gtfs_matches_id,
-            overlap_idx,
 
             intxnLen,
 
@@ -277,7 +291,7 @@ function loadGtfsMatchesConflationMapJoinTable() {
       shst_reference    TEXT,
       shst_ref_start    REAL,
       shst_ref_end      REAL,
-      
+
       PRIMARY KEY (gtfs_shape_id, gtfs_shape_index, path_index, path_edge_index)
     ) WITHOUT ROWID;
 
@@ -356,7 +370,7 @@ function load() {
 
     db.exec("BEGIN");
 
-    // loadCospatialityTable();
+    loadCospatialityTable();
     loadGtfsMatchesConflationMapJoinTable();
 
     db.exec("COMMIT;");
