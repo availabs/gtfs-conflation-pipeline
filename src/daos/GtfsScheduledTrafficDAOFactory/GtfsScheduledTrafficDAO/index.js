@@ -11,7 +11,7 @@ class GtfsScheduledTrafficDAO {
     db.attachDatabase(DATABASE_SCHEMA_NAME);
 
     assimilate(this, {
-      ...loaders
+      ...loaders,
     });
   }
 }

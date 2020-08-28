@@ -22,14 +22,17 @@ const GtfsNetworkDAOFactory = require("../../GtfsNetworkDAOFactory");
 const { RAW_GTFS } = require("../../../constants/databaseSchemaNames");
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
-const { createScheduledTransitTrafficTable } = require("./createTableFns");
+const {
+  createScheduledTransitTrafficTable,
+  createServiceDatesTable,
+} = require("./createTableFns");
 
 const MINS_PER_HOUR = 60;
 const SECS_PER_MIN = 60;
 
 // HH:MM:SS => seconds into day
-const getTimestamp = time => {
-  const [h, m, s] = time.split(":").map(u => +u);
+const getTimestamp = (time) => {
+  const [h, m, s] = time.split(":").map((u) => +u);
   // ((hrs * min/hr) + mins) * sec/min + secs => seconds into day
   return (h * MINS_PER_HOUR + m) * SECS_PER_MIN + s;
 };
@@ -57,8 +60,8 @@ function initializeDataStructures() {
   //   so we remove them from consideration here.
   const finalStopIds = _.get(_.last(this.segmentedShape), [
     "properties",
-    "to_stop_ids"
-  ]).filter(s => s !== null);
+    "to_stop_ids",
+  ]).filter((s) => s !== null);
 
   // Because we filtered out the NULL stops, we know that
   //   the finalStopIds represent real transit network stops.
@@ -102,7 +105,7 @@ function initializeDataStructures() {
   }
 
   // Reverse the stops2segsFifo arrays so they are FIFOs when using pop().
-  Object.keys(this.stops2segsFifo).forEach(s =>
+  Object.keys(this.stops2segsFifo).forEach((s) =>
     this.stops2segsFifo[s].reverse()
   );
 }
@@ -188,7 +191,7 @@ class TripTracker {
     //     the correct (further along) segment index in case the bus trip visits
     //     the skipped stop at a later time along its journey.
     for (let i = dptrSegIdx; i < arvlSegIdx; ++i) {
-      this.segs2segs4stops[i].forEach(stops2segsFifo => {
+      this.segs2segs4stops[i].forEach((stops2segsFifo) => {
         const fifoHead = stops2segsFifo.pop();
 
         // Make sure our datastructures are being correctly maintained.
@@ -239,7 +242,7 @@ class TripTracker {
         dptrSegIdx,
         arvlSegIdx,
         dptrTS,
-        arvlTS
+        arvlTS,
       });
     }
 
@@ -247,7 +250,7 @@ class TripTracker {
       // The dptrSegIdx becomes the current arvlSegIdx.
       dptrSegIdx: arvlSegIdx,
       // The dptrTS becomes this stop_times entry's departure_time.
-      dptrTS: getTimestamp(departure_time)
+      dptrTS: getTimestamp(departure_time),
     };
   }
 
@@ -274,7 +277,7 @@ class TripTracker {
         arvlSegIdx,
         dptrTS,
         arvlTS,
-        this.trip_id
+        this.trip_id,
       ]);
     }
   }
@@ -334,6 +337,7 @@ function load() {
     db.exec("BEGIN");
 
     loadTripStopTimes();
+    createServiceDatesTable(db);
 
     const [rawStopTimesRows] = db
       .prepare(
@@ -365,5 +369,5 @@ function load() {
 }
 
 module.exports = {
-  load
+  load,
 };
