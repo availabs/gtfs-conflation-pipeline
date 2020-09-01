@@ -74,9 +74,9 @@ function load(conflationMapSqlitePath) {
       } = feature;
 
       if (_.isNil(shstRef)) {
-        console.warn(
-          "INVARIANT BROKEN: Conflation map segment without a shstRef"
-        );
+        // console.warn(
+        // "INVARIANT BROKEN: Conflation map segment without a shstRef"
+        // );
         continue;
       }
 

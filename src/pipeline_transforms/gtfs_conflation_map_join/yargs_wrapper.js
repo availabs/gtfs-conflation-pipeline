@@ -9,5 +9,5 @@ const handler = main;
 module.exports = {
   command,
   desc,
-  handler
+  handler,
 };

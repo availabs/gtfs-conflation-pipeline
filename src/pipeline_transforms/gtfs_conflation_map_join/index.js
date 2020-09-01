@@ -4,7 +4,7 @@ const logger = require("../../services/Logger");
 
 const DAOFactory = require("../../daos/GtfsConflationMapJoinDAOFactory");
 
-const timerId = "join GTFS schedule to conflation map";
+const timerId = "join GTFS shapes to conflation map";
 
 const main = async () => {
   try {
