@@ -43,5 +43,5 @@ function makeScheduledStopsIterator() {
 module.exports = {
   makeStopsIterator,
   makeShapesIterator,
-  makeScheduledStopsIterator
+  makeScheduledStopsIterator,
 };

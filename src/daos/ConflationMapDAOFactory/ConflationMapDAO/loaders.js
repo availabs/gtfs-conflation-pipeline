@@ -3,6 +3,8 @@
 const { join, isAbsolute } = require("path");
 
 const Database = require("better-sqlite3");
+
+const turf = require("@turf/turf");
 const _ = require("lodash");
 
 const db = require("../../../services/DbService");
@@ -41,8 +43,10 @@ function load(conflationMapSqlitePath) {
       INSERT INTO ${SCHEMA}.conflation_map (
           id,
           shst_reference,
+          networklevel,
+          length_km,
           feature
-        ) VALUES (?, ?, ?) ;
+        ) VALUES (?, ?, ?, ?, ?) ;
     `);
 
     const dbPath = isAbsolute(conflationMapSqlitePath)
@@ -66,12 +70,17 @@ function load(conflationMapSqlitePath) {
       const feature = JSON.parse(fStr);
 
       const {
-        properties: { shstReferenceId: shstRef = null },
+        properties: { shstReferenceId: shstRef = null, networklevel },
       } = feature;
 
       if (_.isNil(shstRef)) {
+        console.warn(
+          "INVARIANT BROKEN: Conflation map segment without a shstRef"
+        );
         continue;
       }
+
+      const length_km = turf.length(feature);
 
       // We may be able to use these properties to string together
       //   topologically sorted sequences of ShSt references.
@@ -83,7 +92,13 @@ function load(conflationMapSqlitePath) {
 
       roundGeometryCoordinates(feature);
 
-      insertStmt.run([id, shstRef, JSON.stringify(feature)]);
+      insertStmt.run([
+        id,
+        shstRef,
+        networklevel,
+        length_km,
+        JSON.stringify(feature),
+      ]);
     }
 
     db.prepare("COMMIT;").run();

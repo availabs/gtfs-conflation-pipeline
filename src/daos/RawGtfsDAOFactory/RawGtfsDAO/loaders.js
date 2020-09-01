@@ -15,7 +15,7 @@ const SUPPORTED_TABLES = require("./SUPPORTED_TABLES");
  * @param { string } fileName The GTFS file name
  * @returns { string } The corresponding database table name.
  */
-const getTableNameForGtfsFileName = fileName => {
+const getTableNameForGtfsFileName = (fileName) => {
   if (!fileName) {
     return null;
   }
@@ -102,5 +102,5 @@ async function loadAsync(fileName, rowAsyncIterator, opts) {
 }
 
 module.exports = {
-  loadAsync
+  loadAsync,
 };

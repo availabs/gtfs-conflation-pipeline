@@ -33,10 +33,10 @@ const getSqliteDir = memoizeOne(() => {
 
 const db = new Database(IN_MEMORY);
 
-const getDatabaseFilePathForSchemaName = databaseSchemaName =>
+const getDatabaseFilePathForSchemaName = (databaseSchemaName) =>
   join(getSqliteDir(), databaseSchemaName);
 
-const openLoadingConnectionToDb = databaseSchemaName => {
+const openLoadingConnectionToDb = (databaseSchemaName) => {
   const databaseFilePath = getDatabaseFilePathForSchemaName(databaseSchemaName);
 
   const xdb = new Database(IN_MEMORY);
@@ -46,13 +46,13 @@ const openLoadingConnectionToDb = databaseSchemaName => {
   return xdb;
 };
 
-const closeLoadingConnectionToDb = xdb => {
+const closeLoadingConnectionToDb = (xdb) => {
   xdb.close();
 };
 
 const attachedDatabases = new Set();
 
-const attachDatabase = databaseSchemaName => {
+const attachDatabase = (databaseSchemaName) => {
   if (attachedDatabases.has(databaseSchemaName)) {
     return;
   }
@@ -68,7 +68,7 @@ const attachDatabase = databaseSchemaName => {
 const preparedStmts = {};
 
 // Idempotent
-const prepare = sql => {
+const prepare = (sql) => {
   if (preparedStmts[sql]) {
     return preparedStmts[sql];
   }
@@ -89,5 +89,5 @@ module.exports = {
   transaction: db.transaction.bind(db),
   openLoadingConnectionToDb,
   closeLoadingConnectionToDb,
-  unsafeMode: db.unsafeMode.bind(db)
+  unsafeMode: db.unsafeMode.bind(db),
 };
