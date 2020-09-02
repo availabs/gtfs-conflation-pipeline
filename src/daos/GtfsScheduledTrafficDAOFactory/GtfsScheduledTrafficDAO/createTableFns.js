@@ -77,6 +77,7 @@
     2. If no calendar_dates table, create
 */
 
+const _ = require("lodash");
 const { RAW_GTFS } = require("../../../constants/databaseSchemaNames");
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
@@ -103,15 +104,22 @@ const createScheduledTransitTrafficTable = (db) =>
     ) WITHOUT ROWID ;
   `);
 
-// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-// Handle case of GTFS with no calendar table
-const createServiceDatesTable = (db) => {
-  db.attachDatabase(RAW_GTFS);
-
-  const { has_calendar_table, has_calendar_dates_table } = db
+const createTemporaryGtfsTables = (db) => {
+  // Determine which tables are included in this GTFS feed.
+  const { has_feed_info, has_calendar_table, has_calendar_dates_table } = db
     .prepare(
       `
         SELECT
+            EXISTS (
+              SELECT
+                  1
+                FROM ${RAW_GTFS}.sqlite_master
+                WHERE (
+                  ( type = 'table' )
+                  AND
+                  ( name = 'feed_info' )
+                )
+            ) AS has_feed_info,
             EXISTS (
               SELECT
                   1
@@ -135,16 +143,44 @@ const createServiceDatesTable = (db) => {
     )
     .get();
 
+  if (!(has_feed_info || has_calendar_table || has_calendar_dates_table)) {
+    throw new Error(`GTFS feed must have at least one of the following files:
+      * feed_info
+      * calendar
+      * calendar_dates
+    `);
+  }
+
+  if (has_feed_info) {
+    db.exec(`
+      -- Create an alias VIEW
+      CREATE TEMPORARY VIEW tmp_feed_info
+        AS SELECT * FROM ${RAW_GTFS}.feed_info
+      ;
+    `);
+  } else {
+    db.exec(`
+      -- Create an empty table so later SQL queries can assume its existence.
+      CREATE TEMPORARY TABLE IF NOT EXISTS tmp_feed_info (
+        feed_start_date      TEXT,
+        feed_end_date        TEXT
+      ) ;
+    `);
+  }
+
   // Because the calendar and calendar_dates tables are optional,
   //   we create views so that the CREATE service_dates table
   //   is uniform across GTFS archives.
   if (has_calendar_table) {
     db.exec(`
+      -- Create an alias VIEW
       CREATE TEMPORARY VIEW tmp_calendar
-        AS SELECT * FROM ${RAW_GTFS}.calendar ;
+        AS SELECT * FROM ${RAW_GTFS}.calendar
+      ;
     `);
   } else {
     db.exec(`
+      -- Create an empty table so later SQL queries can assume its existence.
       CREATE TEMPORARY TABLE IF NOT EXISTS tmp_calendar (
         service_id  TEXT,
         monday      INTEGER,
@@ -162,11 +198,14 @@ const createServiceDatesTable = (db) => {
 
   if (has_calendar_dates_table) {
     db.exec(`
+      -- Create an alias VIEW
       CREATE TEMPORARY VIEW tmp_calendar_dates
-        AS SELECT * FROM ${RAW_GTFS}.calendar_dates ;
+        AS SELECT * FROM ${RAW_GTFS}.calendar_dates
+      ;
     `);
   } else {
     db.exec(`
+      -- Create an empty table so later SQL queries can assume its existence.
       CREATE TEMPORARY TABLE IF NOT EXISTS tmp_calendar_dates (
         service_id      TEXT,
         date            TEXT,
@@ -174,6 +213,146 @@ const createServiceDatesTable = (db) => {
       ) ;
     `);
   }
+};
+
+const createFeedDateExtentsTable = (db) => {
+  // Get the official feed start date
+  const { feed_start_date } =
+    // Prefer the feed_info start_date
+    db
+      .prepare(
+        `
+          SELECT
+              MIN(feed_start_date) AS feed_start_date
+            FROM tmp_feed_info
+            WHERE ( feed_start_date IS NOT NULL )
+          ;
+        `
+      )
+      .get() ||
+    // Fall back to the the calendar tables
+    db
+      .prepare(
+        `
+          SELECT
+              MIN(date) AS feed_start_date
+            FROM (
+              SELECT
+                  MIN(start_date) AS date
+                FROM tmp_calendar
+              UNION
+              SELECT
+                  MIN(date) AS date
+                FROM tmp_calendar_dates
+                WHERE ( exception_type = 1 )
+            )
+          ;
+        `
+      )
+      .get() ||
+    {};
+
+  // Get the official feed end date
+  const { feed_end_date } =
+    // Prefer the feed_info date extent
+    db
+      .prepare(
+        `
+          SELECT
+              MAX(feed_end_date) AS feed_end_date
+            FROM tmp_feed_info
+            WHERE ( feed_end_date IS NOT NULL )
+          ;
+        `
+      )
+      .get() ||
+    // Fall back to the the calendar tables
+    db
+      .prepare(
+        `
+          SELECT
+              MAX(date) AS feed_end_date
+            FROM (
+              SELECT
+                  MAX(end_date) AS date
+                FROM tmp_calendar
+              UNION
+              SELECT
+                  MAX(date) AS date
+                FROM tmp_calendar_dates
+                WHERE ( exception_type = 1 )
+            )
+          ;
+        `
+      )
+      .get() ||
+    {};
+
+  if (_.isNaN(feed_start_date) || _.isNil(feed_end_date)) {
+    throw new Error("Unable to determine the feed date extent.");
+  }
+
+  db.exec(`
+    DROP TABLE IF EXISTS ${SCHEMA}.feed_date_extent;
+
+    CREATE TABLE ${SCHEMA}.feed_date_extent
+      AS
+        SELECT
+            column1 AS feed_start_date,
+            column2 AS feed_end_date
+          FROM ( VALUES ( '${feed_start_date}', '${feed_end_date}' ) )
+    ;
+  `);
+};
+
+const createTemporaryServiceDatesAndDowsTable = (db) => {
+  db.exec(`
+    CREATE TEMPORARY TABLE tmp_dates_and_dows
+      AS
+        WITH RECURSIVE cte_dates_and_dows(service_date) AS (
+          -- Generate all (date, dow) tuples within the feed_date_extent
+          -- See: https://stackoverflow.com/a/32987070/3970755
+          SELECT
+              (
+                substr(feed_start_date , 1, 4)
+                || '-'
+                || substr(feed_start_date, 5, 2)
+                || '-'
+                || substr(feed_start_date, 7, 2)
+              ) AS service_date
+            FROM feed_date_extent
+          UNION ALL
+          SELECT
+              date(
+                service_date,
+                '+1 day'
+              ) AS service_date
+            FROM cte_dates_and_dows
+            WHERE (
+              -- NOTE: Feed end date is inclusive. This filter applied before incrementing date.
+              (
+                replace(service_date, '-', '')
+                < (SELECT feed_end_date FROM feed_date_extent)
+              )
+            )
+        )
+        SELECT
+            -- Revert to GTFS date format YYYYMMDD
+            replace(service_date, '-', '') AS date,
+            CAST(
+              strftime('%w', service_date) AS INTEGER
+            ) AS dow
+          FROM cte_dates_and_dows
+    ;
+  `);
+};
+
+const createServiceDatesTable = (db) => {
+  db.attachDatabase(RAW_GTFS);
+
+  createTemporaryGtfsTables(db);
+  createFeedDateExtentsTable(db);
+  createTemporaryServiceDatesAndDowsTable(db);
 
   db.exec(`
     DROP TABLE IF EXISTS ${SCHEMA}.service_dates;
@@ -187,128 +366,85 @@ const createServiceDatesTable = (db) => {
     ) WITHOUT ROWID ;
 
     INSERT INTO ${SCHEMA}.service_dates
-      WITH RECURSIVE cte_date_extents AS (
-          SELECT
-              date(
-                substr(start_d, 1, 4)
-                || '-'
-                || substr(start_d, 5, 2)
-                || '-'
-                || substr(start_d, 7, 2)
-              ) AS min_date,
-              date(
-                substr(end_d, 1, 4)
-                || '-'
-                || substr(end_d, 5, 2)
-                || '-'
-                || substr(end_d, 7, 2)
-              ) AS max_date
-            FROM (
-              SELECT
-                  MIN(start_date) AS start_d,
-                  MAX(end_date) AS end_d
-                FROM tmp_calendar
-            )
-        ), cte_dates_and_dows(date, dow) AS (
-          SELECT
-              min_date AS date,
-              CAST(
-                strftime('%w', min_date) AS INTEGER
-              ) AS dow
-            FROM cte_date_extents
-          UNION ALL
-          SELECT
-              date(
-                 date,
-                '+1 day'
-              ) AS date,
-              CAST(
-                strftime('%w', date( date, '+1 day' )) AS INTEGER
-              ) AS dow
-            FROM cte_dates_and_dows
-            WHERE date < (SELECT max_date FROM cte_date_extents)
-        ), cte_service_calendar (service_id, service_dows, start_date, end_date) AS (
+      SELECT
+          service_id,
+          date,
+          dow
+        FROM (
+          -- Dates of service within date_extent based on calendar table
           SELECT
               service_id,
-              json_array(
-                sunday,
-                monday,
-                tuesday,
-                wednesday,
-                thursday,
-                friday,
-                saturday,
-                sunday
-              ) AS dows,
-              start_date,
-              end_date
-            FROM tmp_calendar
-        ), cte_service_dates AS (
-          SELECT
-              *
-            FROM (
-              SELECT
-                  service_id,
-                  replace(date, '-', '') AS date,
-                  dow
-                FROM cte_service_calendar AS a
-                  CROSS JOIN cte_dates_and_dows AS b
-                WHERE (
+              a.date,
+              dow
+            FROM tmp_dates_and_dows AS a
+              INNER JOIN (
+                SELECT
+                    service_id,
+                    -- This array is used to filter out dates based on DOW.
+                    json_array(
+                      sunday,
+                      monday,
+                      tuesday,
+                      wednesday,
+                      thursday,
+                      friday,
+                      saturday,
+                      sunday
+                    ) AS service_dows,
+                    start_date,
+                    end_date
+                  FROM tmp_calendar
+              ) AS b
+                ON (
+                  -- Does the service run on this day of the week?
                   (
                     CAST(
-                      json_extract(a.service_dows, '$[' || b.dow || ']')
+                      json_extract(b.service_dows, '$[' || a.dow || ']')
                       AS INTEGER
                     ) = 1
                   )
                   AND
-                  ( replace(date, '-', '') >= start_date )
-                  AND
-                  ( replace(date, '-', '') <= end_date )
+                  -- Does the date fall within the specific service's start and end dates?
+                  (
+                    ( a.date >= b.start_date )
+                    AND
+                    ( a.date <= b.end_date )
+                  )
                 )
-              UNION
-              SELECT
-                  service_id,
-                  date,
-                  CAST(
-                    strftime(
-                      '%w',
-                      (
-                        substr(date, 1, 4)
-                        || '-'
-                        || substr(date, 5, 2)
-                        || '-'
-                        || substr(date, 7, 2)
-                      )
-                    ) AS INTEGER
-                  ) AS dow
-                FROM tmp_calendar_dates
-                WHERE ( exception_type = 1 )
-            )
-          EXCEPT
-          SELECT
-              service_id,
-              date,
-              CAST(
-                strftime(
-                  '%w',
-                    (
-                      substr(date, 1, 4)
-                      || '-'
-                      || substr(date, 5, 2)
-                      || '-'
-                      || substr(date, 7, 2)
-                    )
-                ) AS INTEGER
-              ) AS dow
-            FROM tmp_calendar_dates
-            WHERE ( exception_type = 2 )
-        )
+
+          -- Add service dates where calendar_dates specifies service added exception_type
+          UNION
+
           SELECT
               service_id,
               date,
               dow
-            FROM cte_service_dates
-        ;
+            FROM tmp_calendar_dates AS a
+              INNER JOIN tmp_dates_and_dows AS b
+                USING ( date )
+              INNER JOIN feed_date_extent AS c
+            WHERE (
+              -- Exception type is service added
+              ( a.exception_type = 1 )
+            )
+        ) AS sub_included
+
+      -- Remove service dates where calendar_dates specifies service removed exception_type
+      EXCEPT
+
+      SELECT
+          service_id,
+          date,
+          CAST( strftime( '%w', date ) AS INTEGER ) AS dow
+        FROM tmp_calendar_dates
+          INNER JOIN tmp_dates_and_dows AS b
+            USING ( date )
+          INNER JOIN feed_date_extent AS c
+        WHERE (
+          -- Exception type is service added
+          ( exception_type = 2 )
+        )
+    ;
   `);
 };
 

@@ -28,6 +28,29 @@ const createGtfsAggregations = (db) => {
 
     CREATE TABLE ${SCHEMA}.gtfs_scheduled_traffic_by_route
       AS
+        WITH cte_feed_date_extent_num_weeks AS (
+          SELECT
+              (
+                (
+                  julianday(
+                    substr(feed_end_date, 1, 4)
+                    || '-'
+                    || substr(feed_end_date, 5, 2)
+                    || '-'
+                    || substr(feed_end_date, 7, 2)
+                  )
+                  -
+                  julianday(
+                    substr(feed_start_date, 1, 4)
+                    || '-'
+                    || substr(feed_start_date, 5, 2)
+                    || '-'
+                    || substr(feed_start_date, 7, 2)
+                  )
+                ) / 7.0
+              ) AS feed_num_weeks
+          FROM ${GTFS_SCHEDULED_TRAFFIC}.feed_date_extent
+        )
         SELECT
             conflation_map_id,
             route_short_name,
@@ -38,28 +61,7 @@ const createGtfsAggregations = (db) => {
 
             -- Count for DOW divided by number of scheduled weeks for route
             ROUND(
-              COUNT(1)
-              /
-              (
-                -- Number of scheduled weeks for this route
-                (
-                  julianday(
-                    substr(MAX(date), 1, 4)
-                    || '-'
-                    || substr(MAX(date), 5, 2)
-                    || '-'
-                    || substr(MAX(date), 7, 2)
-                  )
-                  -
-                  julianday(
-                    substr(MIN(date), 1, 4)
-                    || '-'
-                    || substr(MIN(date), 5, 2)
-                    || '-'
-                    || substr(MIN(date), 7, 2)
-                  )
-                ) / 7.0
-              ),
+              COUNT(1) / MAX(feed_num_weeks),
               1
             ) AS avg_weekly_count,
             group_concat(DISTINCT trip_id) AS trip_ids
@@ -70,6 +72,7 @@ const createGtfsAggregations = (db) => {
               USING (service_id)
             INNER JOIN ${SCHEMA}.gtfs_synthetic_probe_data
               USING (trip_id)
+            CROSS JOIN cte_feed_date_extent_num_weeks
           GROUP BY
             conflation_map_id,
             route_short_name,
@@ -135,7 +138,10 @@ const createConflationMapAadtBreakdownTable = (db) =>
             ELSE 'OVN'
           END AS peak,
           route_short_name,
-          SUM(avg_weekly_count) / 7 AS aadt
+          ROUND(
+            SUM(avg_weekly_count)
+            / 7
+          ) AS aadt
         FROM ${SCHEMA}.gtfs_scheduled_traffic_by_route
         GROUP BY 1,2,3
     )
