@@ -1,12 +1,12 @@
 /* eslint-disable no-restricted-syntax, jsdoc/require-jsdoc, no-param-reassign */
 
 const _ = require("lodash");
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
 const {
   GTFS_NETWORK,
-  GTFS_OSM_NETWORK
-} = require("../../../constants/databaseSchemaNames");
+  GTFS_OSM_NETWORK,
+} = require("../../constants/databaseSchemaNames");
 
 // CREATE TABLE IF NOT EXISTS ${SCHEMA}.shape_segments (
 //   shape_id       TEXT,
@@ -191,5 +191,5 @@ module.exports = {
   makeMatchesIterator,
   makeShapeMatchesIterator,
   makeAllShstMatchesIterator,
-  makeAllChosenShstMatchesIterator
+  makeAllChosenShstMatchesIterator,
 };

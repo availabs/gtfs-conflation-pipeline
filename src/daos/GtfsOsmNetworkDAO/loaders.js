@@ -5,11 +5,11 @@
 const turf = require("@turf/turf");
 const _ = require("lodash");
 
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
-const roundGeometryCoordinates = require("../../../utils/roundGeometryCoordinates");
+const roundGeometryCoordinates = require("../../utils/roundGeometryCoordinates");
 
-const GtfsNetworkDAOFactory = require("../../GtfsNetworkDAOFactory");
+const GtfsNetworkDAO = require("../GtfsNetworkDAO");
 
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
@@ -52,9 +52,7 @@ async function loadRawShStMatches(xdb) {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ;
     `);
 
-  const gtfsNetworkDAO = GtfsNetworkDAOFactory.getDAO();
-
-  const iter = gtfsNetworkDAO.makeShapeSegmentsIterator();
+  const iter = GtfsNetworkDAO.makeShapeSegmentsIterator();
 
   const matchesIter = matchSegmentedShapeFeatures(iter);
 

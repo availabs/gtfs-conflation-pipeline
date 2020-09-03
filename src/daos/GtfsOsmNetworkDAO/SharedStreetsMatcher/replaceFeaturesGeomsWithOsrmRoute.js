@@ -19,10 +19,10 @@ const N = 10;
 const LEN_DIFF_R_REJECT_TH = 0.05;
 const SIMILARITY_THOLD = 0.008;
 
-const splitLineStringUsingSmoothness = require("../../../../utils/splitLineStringUsingSmoothness");
-const lineStringsComparator = require("../../../../utils/lineStringsComparator");
+const splitLineStringUsingSmoothness = require("../../../utils/splitLineStringUsingSmoothness");
+const lineStringsComparator = require("../../../utils/lineStringsComparator");
 
-const getOSRM = memoizeOne(osrmDir => {
+const getOSRM = memoizeOne((osrmDir) => {
   try {
     const osrmFile = join(osrmDir, "graph.xml.osrm");
 
@@ -39,14 +39,14 @@ const getOSRM = memoizeOne(osrmDir => {
 });
 
 const getMatch = (osrm, feature) =>
-  new Promise(resolve =>
+  new Promise((resolve) =>
     osrm.match(
       {
         coordinates: turf.getCoords(feature),
         geometries: "geojson",
         continue_straight: true,
         overview: "full",
-        snapping: "any"
+        snapping: "any",
         // radiuses: osrmRouteCoords.map(() => 20),
         // tidy: true
       },
@@ -79,7 +79,7 @@ const getMatch = (osrm, feature) =>
   );
 
 const getRoute = (osrm, feature) =>
-  new Promise(resolve =>
+  new Promise((resolve) =>
     osrm.route(
       {
         // alternatives: true,
@@ -89,7 +89,7 @@ const getRoute = (osrm, feature) =>
         continue_straight: true,
         overview: "full",
         snapping: "any",
-        tidy: true
+        tidy: true,
       },
       (err, result) => {
         if (err) {
@@ -103,8 +103,8 @@ const getRoute = (osrm, feature) =>
 
           const [
             {
-              geometry: { coordinates: resultRouteCoords }
-            }
+              geometry: { coordinates: resultRouteCoords },
+            },
           ] = routes;
 
           const newFeature = turf.lineString(
@@ -129,7 +129,7 @@ const lineSliceByDistanceMethod = async ({ feature, osrmDir }, osrmMethod) => {
 
   for (let n = N; n >= 4; --n) {
     try {
-      const waypointCoords = _.range(0, n).map(m =>
+      const waypointCoords = _.range(0, n).map((m) =>
         _.first(
           turf.getCoords(
             turf.lineSliceAlong(feature, (featureLength * m) / n, featureLength)
@@ -205,7 +205,7 @@ const lineSliceByBearingMethod = async ({ feature, osrmDir }, osrmMethod) => {
   bearingSplitSegments.push(...singleTurns);
 
   const chunkedBearingSplitSegments = _.flattenDeep(
-    bearingSplitSegments.map(f => {
+    bearingSplitSegments.map((f) => {
       const featureLen = turf.length(f);
       const { features: chunkedFeatures } = turf.lineChunk(f, 2.5); // 2.5KM
 
@@ -227,7 +227,7 @@ const lineSliceByBearingMethod = async ({ feature, osrmDir }, osrmMethod) => {
 
       return null;
     })
-  ).filter(f => f);
+  ).filter((f) => f);
 
   bearingSplitSegments.push(...chunkedBearingSplitSegments);
 
@@ -238,7 +238,7 @@ const lineSliceByBearingMethod = async ({ feature, osrmDir }, osrmMethod) => {
 
     // [getRoute].map(async mapFn => {
     const osrmMappedFeatures = await Promise.all(
-      bearingSplitSegments.map(seg => mapFn(osrm, seg))
+      bearingSplitSegments.map((seg) => mapFn(osrm, seg))
     );
 
     // console.log(JSON.stringify(osrmMappedFeatures, null, 4));

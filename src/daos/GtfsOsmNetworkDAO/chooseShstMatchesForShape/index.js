@@ -30,7 +30,7 @@ const computeShapeLevelPathCombinationProperties = require("./computeShapeLevelP
 // //   Encapsulation with QA quanta/qualia metadata.
 // const DIST_BETWEEN_PAIRED_NODES = 0.002; // 2 meters
 
-const getShstMatchesById = gtfsNetEdgesShstMatches =>
+const getShstMatchesById = (gtfsNetEdgesShstMatches) =>
   gtfsNetEdgesShstMatches.reduce((acc, { shstMatches }) => {
     if (shstMatches !== null) {
       for (let i = 0; i < shstMatches.length; ++i) {
@@ -105,7 +105,7 @@ class ShstMatchesSubGraphBuilder {
 // eslint-disable-next-line
 // let counter = 0;
 
-const toposortShstMatchesForGtfsShape = gtfsNetEdgesShstMatches => {
+const toposortShstMatchesForGtfsShape = (gtfsNetEdgesShstMatches) => {
   if (this.counter++ === 10) {
     process.exit();
   }

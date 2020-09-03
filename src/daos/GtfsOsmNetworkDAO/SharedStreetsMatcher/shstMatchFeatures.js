@@ -19,7 +19,7 @@ const INF_PATH = "features.geojson";
 const OUTF_PATH = "shst_match_output.geojson";
 const MATCHED_PATH = OUTF_PATH.replace(/geojson$/, "matched.geojson");
 
-const PROJECT_ROOT = join(__dirname, "../../../../../");
+const PROJECT_ROOT = join(__dirname, "../../../../");
 const SHST_DATA_DIR = join(PROJECT_ROOT, "data/shst/");
 const SHST_PATH = join(PROJECT_ROOT, "node_modules/.bin/shst");
 
@@ -30,7 +30,7 @@ const BEARING_SLICE_METHOD = "BEARING_SLICE_METHOD";
 
 const SHST_CHILD_PROC_OPTS = {
   cwd: PROJECT_ROOT,
-  env: { ...process.env, HOME: SHST_DATA_DIR }
+  env: { ...process.env, HOME: SHST_DATA_DIR },
 };
 
 const SHST_DATA_DIR_REGEXP = new RegExp(
@@ -47,7 +47,7 @@ const MAX_FEATURE_LENGTH = 2; /* km */
 const MATCHES_LENGTH_RATIO_THOLD = 0.1;
 
 const runShstMatch = (inFilePath, outFilePath, flags) => {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     // Why not runSync>
     const cp = spawn(
       `${SHST_PATH}`,
@@ -57,7 +57,7 @@ const runShstMatch = (inFilePath, outFilePath, flags) => {
           `${inFilePath}`,
           "--follow-line-direction",
           "--tile-hierarchy=8",
-          `--out=${outFilePath}`
+          `--out=${outFilePath}`,
         ],
         flags
       ).filter(_.negate(_.isNil)),
@@ -81,7 +81,7 @@ const runShstMatch = (inFilePath, outFilePath, flags) => {
 
         cb();
       }),
-      err => {
+      (err) => {
         if (err) {
           console.error(err);
         }
@@ -96,18 +96,18 @@ const runShstMatch = (inFilePath, outFilePath, flags) => {
         console.error(line.toString());
         cb();
       }),
-      err => {
+      (err) => {
         if (err) {
           console.error(err);
         }
       }
     );
 
-    cp.on("error", err => {
+    cp.on("error", (err) => {
       console.error(err);
     });
 
-    cp.on("exit", code => {
+    cp.on("exit", (code) => {
       if (code !== 0) {
         console.error(`WARNING: shst match exited with code ${code}.`);
       }
@@ -117,7 +117,7 @@ const runShstMatch = (inFilePath, outFilePath, flags) => {
   });
 };
 
-const collectMatchedFeatures = matchedFilePath => {
+const collectMatchedFeatures = (matchedFilePath) => {
   const matchedFeatureCollection = existsSync(matchedFilePath)
     ? JSON.parse(readFileSync(matchedFilePath, UTF8_ENCODING))
     : null;
@@ -127,7 +127,7 @@ const collectMatchedFeatures = matchedFilePath => {
   return matchedFeatures.length ? matchedFeatures : null;
 };
 
-const preprocessFeatures = features =>
+const preprocessFeatures = (features) =>
   features.reduce((acc, feature) => {
     const len = turf.length(feature);
 
@@ -183,7 +183,7 @@ const match = async ({ features, flags }) => {
   const featureCollection = turf.featureCollection(preprocessedFeatures);
 
   const { name: workDirName, removeCallback: cleanup } = tmp.dirSync({
-    unsafeCleanup: true
+    unsafeCleanup: true,
   });
 
   const inFilePath = join(workDirName, INF_PATH);
@@ -213,7 +213,7 @@ const match = async ({ features, flags }) => {
 const runMatcher = (features, flags) =>
   match({
     features,
-    flags: flags.concat([])
+    flags: flags.concat([]),
   });
 
 const updateMatches = (matches, newMatches) => {
@@ -221,7 +221,7 @@ const updateMatches = (matches, newMatches) => {
   // https://lodash.com/docs/4.17.15#uniqWith
   //   The order of result values is determined by the order they occur in the array.
   const uniqueMatches = _.uniqWith(
-    Array.prototype.concat(matches, newMatches).filter(f => f),
+    Array.prototype.concat(matches, newMatches).filter((f) => f),
     // Definition of "equivalence"
     (a, b) =>
       // same target_map feature
@@ -245,7 +245,7 @@ const updateUnmatched = (unmatched, matches) => {
     ? matches.reduce((acc, shstMatch) => {
         if (shstMatch && shstMatch.geometry.coordinates.length > 1) {
           const {
-            properties: { pp_id }
+            properties: { pp_id },
           } = shstMatch;
 
           acc[pp_id] = acc[pp_id] || [];
@@ -256,9 +256,9 @@ const updateUnmatched = (unmatched, matches) => {
       }, {})
     : {};
 
-  const unmatchedFeatures = unmatched.filter(feature => {
+  const unmatchedFeatures = unmatched.filter((feature) => {
     const {
-      properties: { id }
+      properties: { id },
     } = feature;
 
     const matchesForFeature = matchesByTargetMapId[id] || [];
@@ -304,7 +304,7 @@ const shstMatchFeatures = async (features, flags = []) => {
     (await runMatcher(features, flags)) || {};
 
   if (Array.isArray(matchedCar)) {
-    matchedCar.forEach(feature => {
+    matchedCar.forEach((feature) => {
       /* eslint-disable-next-line */
       feature.properties.pp_osrm_assisted = false;
     });
@@ -329,7 +329,7 @@ const shstMatchFeatures = async (features, flags = []) => {
           const mapped = await replaceFeaturesGeomsWithOsrmRoute(
             {
               osrmDir,
-              feature
+              feature,
             },
             { lineSliceMethod, osrmMethod }
           );
@@ -346,7 +346,7 @@ const shstMatchFeatures = async (features, flags = []) => {
         (await runMatcher(osrmMapped, flags)) || {};
 
       if (Array.isArray(matchedOsrmMappedCar)) {
-        matchedOsrmMappedCar.forEach(feature => {
+        matchedOsrmMappedCar.forEach((feature) => {
           /* eslint-disable-next-line */
           feature.properties.pp_osrm_assisted = true;
         });
@@ -361,7 +361,7 @@ const shstMatchFeatures = async (features, flags = []) => {
   for (let i = 0; i < matches.length; ++i) {
     const finalMatch = matches[i];
     const {
-      properties: { pp_id }
+      properties: { pp_id },
     } = finalMatch;
 
     const pp_match_index = idxById[pp_id] || 0;

@@ -8,7 +8,7 @@ const _ = require("lodash");
 
 const { Graph, alg: graphAlgs } = require("graphlib");
 
-const getCospatialityOfLinestrings = require("../../../../utils/gis/getCospatialityOfLinestrings");
+const getCospatialityOfLinestrings = require("../../../utils/gis/getCospatialityOfLinestrings");
 
 const mergePathSegmentsGeospatially = require("./mergePathSegmentsGeospatially");
 const mergePathLineStringsUsingMetadata = require("./mergePathLineStringsUsingMetadata");
@@ -18,7 +18,7 @@ const mergePathLineStringsUsingMetadata = require("./mergePathLineStringsUsingMe
 // //   Encapsulation with QA quanta/qualia metadata.
 // const DIST_BETWEEN_PAIRED_NODES = 0.002; // 2 meters
 
-const removeRedundantCoords = coords =>
+const removeRedundantCoords = (coords) =>
   coords.filter((coord, i) => !_.isEqual(coords[i - 1], coord));
 
 const getRootMeanSquareDeviation = (gtfsNetEdgement, shstMatchVertices) =>
@@ -30,7 +30,7 @@ const getRootMeanSquareDeviation = (gtfsNetEdgement, shstMatchVertices) =>
     ) / shstMatchVertices.length
   );
 
-const buildShstMatchSubGraphs = gtfsNetEdgesShstMatches => {
+const buildShstMatchSubGraphs = (gtfsNetEdgesShstMatches) => {
   if (
     !Array.isArray(gtfsNetEdgesShstMatches) ||
     gtfsNetEdgesShstMatches.length === 0
@@ -49,7 +49,7 @@ const buildShstMatchSubGraphs = gtfsNetEdgesShstMatches => {
     const subGraph = new Graph({
       directed: true,
       compound: false,
-      multigraph: false
+      multigraph: false,
     });
 
     // For each shstMatch for this shape segment
@@ -74,7 +74,7 @@ const buildShstMatchSubGraphs = gtfsNetEdgesShstMatches => {
         nodeIds[endCoordStr] || (nodeIds[endCoordStr] = nodeIdSeq++);
 
       // Ordered list of all vertices in the shstMatch
-      const shstMatchVertices = coords.map(coord => turf.point(coord));
+      const shstMatchVertices = coords.map((coord) => turf.point(coord));
 
       // Get the Root Mean Squared Deviation between the shstMatch's vertices
       //   and the original GTFS shape segment.
@@ -91,7 +91,7 @@ const buildShstMatchSubGraphs = gtfsNetEdgesShstMatches => {
       subGraph.setEdge(startNodeId, endNodeId, {
         id: j,
         edgeWeight,
-        shstMatch
+        shstMatch,
       });
     }
 
@@ -112,7 +112,7 @@ const unionPathLineStrings = (pathLineStrings, shstMatchesById) => {
 
       // If the shstMatch IDs for the two paths overlap at the ends
       //   then merge by leveraging that overlap.
-      _.partialRight(mergePathLineStringsUsingMetadata, shstMatchesById)
+      _.partialRight(mergePathLineStringsUsingMetadata, shstMatchesById),
     ];
 
     for (let mAlgIdx = 0; mAlgIdx < mergeAlgos.length; ++mAlgIdx) {
@@ -134,7 +134,7 @@ const unionPathLineStrings = (pathLineStrings, shstMatchesById) => {
             mergedPaths.push({
               sIdx,
               tIdx,
-              mergedPath
+              mergedPath,
             });
           }
         }
@@ -171,7 +171,7 @@ const unionPathLineStrings = (pathLineStrings, shstMatchesById) => {
       // === Remove paths overlapped by another path ===
 
       // Get the shstMatch IDs for each path
-      const newPathShstMatchIds = newPaths.map(path =>
+      const newPathShstMatchIds = newPaths.map((path) =>
         path.properties.pathDecompositionInfo
           .filter(noGapFill)
           .map(({ id }) => id)
@@ -235,7 +235,7 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
 
   // The sources and sinks for each segment's subGraph's components
   const subGraphComponentsSourcesAndSinks = subGraphComponents.map(
-    component => {
+    (component) => {
       const subSources = _.intersection(component, sources);
       const subSinks = _.intersection(component, sinks);
 
@@ -249,7 +249,7 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
           : _.intersection(component, subGraphSources),
         componentSinks: isSinkComponent
           ? subSinks
-          : _.intersection(component, subGraphSinks)
+          : _.intersection(component, subGraphSinks),
       };
     }
   );
@@ -259,8 +259,8 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
   //   In each component, every possible path source to sink path
   const source2SinkPaths = subGraphComponentsSourcesAndSinks.map(
     ({ componentSources, componentSinks }) =>
-      componentSources.map(src => {
-        const paths = graphAlgs.dijkstra(subGraph, src, e => {
+      componentSources.map((src) => {
+        const paths = graphAlgs.dijkstra(subGraph, src, (e) => {
           const { edgeWeight } = subGraph.edge(e);
 
           return edgeWeight;
@@ -268,7 +268,7 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
         // subGraphPaths.push(paths);
 
         return componentSinks
-          .map(sink => {
+          .map((sink) => {
             if (!Number.isFinite(paths[sink].distance)) {
               return null;
             }
@@ -284,10 +284,10 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
               s = predecessor;
             }
 
-            const p = path.filter(e => e).reverse();
+            const p = path.filter((e) => e).reverse();
             return p.length ? p : null;
           })
-          .filter(p => p);
+          .filter((p) => p);
       })
   );
 
@@ -299,17 +299,17 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
         //   Each component has a two dimensional array
         //     componentSourcesArr
         // The componentSourcesArr for this particular shape segment
-        componentSourcesArr => {
+        (componentSourcesArr) => {
           const gtfsNetworkEdgeLength = turf.length(gtfsNetworkEdge);
 
           const {
-            properties: { shape_id, shape_index }
+            properties: { shape_id, shape_index },
           } = gtfsNetworkEdge;
 
           const shstMatchPaths =
             // For each component in the shape segment's shstMatches subGraph
             Array.isArray(componentSourcesArr)
-              ? componentSourcesArr.map(componentSinksArr => {
+              ? componentSourcesArr.map((componentSinksArr) => {
                   if (
                     !(
                       Array.isArray(componentSinksArr) &&
@@ -319,7 +319,7 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
                     return null;
                   }
 
-                  const mergedLineStrings = componentSinksArr.map(path => {
+                  const mergedLineStrings = componentSinksArr.map((path) => {
                     const pathSummary = _.flatten(
                       _.tail(path).map((w, path_index) => {
                         const v = path[path_index];
@@ -329,8 +329,8 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
                           id,
                           properties: {
                             shstReferenceId,
-                            section: shstReferenceSection
-                          }
+                            section: shstReferenceSection,
+                          },
                         } = shstMatch;
 
                         return {
@@ -338,7 +338,7 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
                           shstReferenceId,
                           shstReferenceSection,
                           len: turf.length(shstMatch),
-                          coords: turf.getCoords(shstMatch)
+                          coords: turf.getCoords(shstMatch),
                         };
                       })
                     );
@@ -351,7 +351,7 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
                       return null;
                     }
 
-                    const pathDecompositionInfo = pathSummary.map(p =>
+                    const pathDecompositionInfo = pathSummary.map((p) =>
                       _.omit(p, "coords")
                     );
 
@@ -359,7 +359,7 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
                       shape_id,
                       shape_index,
                       pathDecompositionInfo,
-                      gtfsNetworkEdgeLength
+                      gtfsNetworkEdgeLength,
                     });
 
                     const mergedShstMatchesLength = turf.length(pathLineString);
@@ -372,7 +372,7 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
                     Object.assign(pathLineString.properties, {
                       mergedShstMatchesLength,
                       lengthDifference,
-                      lengthRatio
+                      lengthRatio,
                     });
 
                     return pathLineString;
@@ -385,7 +385,7 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
           return shstMatchPaths;
         }
       )
-    ).filter(p => p);
+    ).filter((p) => p);
 
   // MUTATES THE pathLineStrings ARRAY
   unionPathLineStrings(pathLineStrings, shstMatchesById);
@@ -393,7 +393,7 @@ const createPathLineStrings = (gtfsNetworkEdge, subGraph, shstMatchesById) => {
   return pathLineStrings;
 };
 
-const getPathsPairwiseCospatiality = pathLineStrings =>
+const getPathsPairwiseCospatiality = (pathLineStrings) =>
   pathLineStrings.reduce((acc, S, sIdx) => {
     for (let tIdx = sIdx + 1; tIdx < pathLineStrings.length; ++tIdx) {
       const T = pathLineStrings[tIdx];
@@ -402,7 +402,7 @@ const getPathsPairwiseCospatiality = pathLineStrings =>
         acc.push({
           sIdx,
           tIdx,
-          cospatiality
+          cospatiality,
         });
       } catch (err) {
         console.error(JSON.stringify({ S, T }, null, 4));
@@ -425,7 +425,7 @@ const computeSubGraphComponentsTraversals = (
 
   const subGraphs = buildShstMatchSubGraphs(gtfsNetEdgesShstMatches);
 
-  if (!(Array.isArray(subGraphs) && subGraphs.filter(g => g).length)) {
+  if (!(Array.isArray(subGraphs) && subGraphs.filter((g) => g).length)) {
     return null;
   }
 
@@ -457,7 +457,7 @@ const computeSubGraphComponentsTraversals = (
       pathLineStrings,
       pathsPairwiseCospatiality: !_.isEmpty(pathsPairwiseCospatiality)
         ? pathsPairwiseCospatiality
-        : null
+        : null,
     };
   });
 };

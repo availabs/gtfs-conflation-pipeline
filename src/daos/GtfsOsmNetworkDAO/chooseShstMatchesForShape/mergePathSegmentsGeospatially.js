@@ -3,16 +3,16 @@
 const turf = require("@turf/turf");
 const _ = require("lodash");
 
-const mergeLineStringsGeospatially = require("../../../../utils/gis/mergeLineStringsGeospatially");
+const mergeLineStringsGeospatially = require("../../../utils/gis/mergeLineStringsGeospatially");
 
 function mergePathSegmentsGeospatially(S, T) {
   const sShstMatchIds = S.properties.pathDecompositionInfo
     .map(({ id }) => id)
-    .filter(id => id !== null);
+    .filter((id) => id !== null);
 
   const tShstMatchIds = T.properties.pathDecompositionInfo
     .map(({ id }) => id)
-    .filter(id => id !== null);
+    .filter((id) => id !== null);
 
   // Can't merge S->T if S & T share shstMatchIds
   if (_.intersection(sShstMatchIds, tShstMatchIds).length > 0) {
@@ -38,21 +38,21 @@ function mergePathSegmentsGeospatially(S, T) {
   // NOTE: Shallow copy... therefore only make shallow mutations.
   const properties = {
     ...S.properties,
-    ...{ pathDecompositionInfo: mergedPDI }
+    ...{ pathDecompositionInfo: mergedPDI },
   };
 
   mergedPath.properties = properties;
 
   const {
-    properties: { gtfsNetworkEdgeLength }
+    properties: { gtfsNetworkEdgeLength },
   } = mergedPath;
 
   const {
-    properties: { mergeHistory: aMergeHistory = null }
+    properties: { mergeHistory: aMergeHistory = null },
   } = A;
 
   const {
-    properties: { mergeHistory: bMergeHistory = null }
+    properties: { mergeHistory: bMergeHistory = null },
   } = B;
 
   const mergeHistory =
@@ -64,8 +64,8 @@ function mergePathSegmentsGeospatially(S, T) {
     algo: "mergePathSegmentsGeospatially",
     shstMatchIds: [
       A.properties.pathDecompositionInfo.map(({ id }) => id),
-      B.properties.pathDecompositionInfo.map(({ id }) => id)
-    ]
+      B.properties.pathDecompositionInfo.map(({ id }) => id),
+    ],
   });
 
   mergedPath.properties.mergeHistory = mergeHistory;
@@ -79,7 +79,7 @@ function mergePathSegmentsGeospatially(S, T) {
   Object.assign(mergedPath.properties, {
     mergedShstMatchesLength,
     lengthDifference,
-    lengthRatio
+    lengthRatio,
   });
 
   return mergedPath;

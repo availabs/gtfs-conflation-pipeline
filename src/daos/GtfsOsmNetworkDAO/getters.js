@@ -2,7 +2,7 @@
 
 const turf = require("@turf/turf");
 const _ = require("lodash");
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS ${SCHEMA}.tmp_raw_shst_matches (
 
 function getShstMatchesForShapes(shapeIds) {
   const _shapeIds = (Array.isArray(shapeIds) ? shapeIds : [shapeIds]).filter(
-    shpId => shpId
+    (shpId) => shpId
   );
 
   if (_.isEmpty(_shapeIds)) {
@@ -53,7 +53,7 @@ function getShstMatchesForShapes(shapeIds) {
     );
 
     const {
-      properties: { pp_shape_id, pp_shape_index, pp_match_index }
+      properties: { pp_shape_id, pp_shape_index, pp_match_index },
     } = feature;
 
     const compositKey = `${pp_shape_id}|${pp_shape_index}|${pp_match_index}`;
@@ -116,5 +116,5 @@ function getMatchedMap() {
 
 module.exports = {
   getShstMatchesForShapes,
-  getMatchedMap
+  getMatchedMap,
 };

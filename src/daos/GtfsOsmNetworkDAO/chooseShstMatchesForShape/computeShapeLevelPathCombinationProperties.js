@@ -17,9 +17,9 @@ const assert = require("assert");
 const turf = require("@turf/turf");
 const _ = require("lodash");
 
-const getSequentiality = require("../../../../utils/gis/getSequentiality");
-// const getSimilarity = require("../../../../utils/gis/getSimilarity");
-const getCospatialityOfLinestrings = require("../../../../utils/gis/getCospatialityOfLinestrings");
+const getSequentiality = require("../../../utils/gis/getSequentiality");
+// const getSimilarity = require("../../../utils/gis/getSimilarity");
+const getCospatialityOfLinestrings = require("../../../utils/gis/getCospatialityOfLinestrings");
 
 const minPathLengthThld = 0.01; // 10 meters
 const maxSegPathLengthDiffRatioThld = 0.05; // 5%
@@ -41,7 +41,7 @@ const findAxiomaticPaths = ({
   aggregatedSummary,
   pathLengthThld,
   segPathLengthDiffRatioThld,
-  gapDistThld
+  gapDistThld,
 }) => {
   let progress = false;
 
@@ -139,7 +139,7 @@ const findNonAxiomaticPaths = ({ chosenPaths, aggregatedSummary }) => {
         // gtfsNetworkEdge,
         // shape_id,
         // shstMatches,
-        pathLineStrings
+        pathLineStrings,
       } = summary;
 
       // const gtfsNetworkEdgeLength = turf.length(gtfsNetworkEdge);
@@ -192,7 +192,7 @@ const findNonAxiomaticPaths = ({ chosenPaths, aggregatedSummary }) => {
       }
 
       for (let i = 0; i < cospatialities.length; ++i) {
-        if (cospatialities[i].every(cospat => cospat === null)) {
+        if (cospatialities[i].every((cospat) => cospat === null)) {
           cospatialities[i] = null;
         }
       }
@@ -256,7 +256,7 @@ const findNonAxiomaticPaths = ({ chosenPaths, aggregatedSummary }) => {
               //   this currentl path cannot be included.
               // otherwise, it must be included to complete the combos.
 
-              const include = constrainers.every(k => pathsCombo[k] === 0);
+              const include = constrainers.every((k) => pathsCombo[k] === 0);
               pathsCombo.push(include ? 1 : 0);
             }
 
@@ -330,7 +330,7 @@ const findNonAxiomaticPaths = ({ chosenPaths, aggregatedSummary }) => {
         );
       }
 
-      const pathsLengths = features.map(f => turf.length(f));
+      const pathsLengths = features.map((f) => turf.length(f));
 
       let maxValueCombo = null;
       let maxValue = -Infinity;
@@ -428,11 +428,11 @@ const findNonAxiomaticPaths = ({ chosenPaths, aggregatedSummary }) => {
   return progress ? filteredPaths : null;
 };
 
-const computeShapeLevelPathCombinationProperties = params => {
+const computeShapeLevelPathCombinationProperties = (params) => {
   const {
     gtfsNetEdgesShstMatches,
     // shstMatchesById,
-    subGraphComponentsTraversals
+    subGraphComponentsTraversals,
   } = params;
 
   if (
@@ -450,8 +450,8 @@ const computeShapeLevelPathCombinationProperties = params => {
 
   const {
     gtfsNetworkEdge: {
-      properties: { shape_id: shapeId }
-    }
+      properties: { shape_id: shapeId },
+    },
   } = _.first(gtfsNetEdgesShstMatches);
 
   // if (shapeId !== "110133") {
@@ -470,7 +470,7 @@ const computeShapeLevelPathCombinationProperties = params => {
     ];
 
     const {
-      properties: { shape_id, shape_index }
+      properties: { shape_id, shape_index },
     } = gtfsNetworkEdge;
 
     assert(shapeId === shape_id);
@@ -503,7 +503,7 @@ const computeShapeLevelPathCombinationProperties = params => {
     const segPathLengthRatios =
       pathLengths &&
       pathLengths.map(
-        pathLength =>
+        (pathLength) =>
           Math.abs(gtfsNetworkEdgeLength - pathLength) / gtfsNetworkEdgeLength
       );
 
@@ -516,7 +516,7 @@ const computeShapeLevelPathCombinationProperties = params => {
       segPathLengthRatios,
       shape_id,
       shape_index,
-      numPaths
+      numPaths,
     });
   }
 
@@ -561,7 +561,7 @@ const computeShapeLevelPathCombinationProperties = params => {
   // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
   // Record which method was used to chose the paths.
   while (true) {
-    if (chosenPaths.every(p => p !== null)) {
+    if (chosenPaths.every((p) => p !== null)) {
       break;
     }
 
@@ -570,7 +570,7 @@ const computeShapeLevelPathCombinationProperties = params => {
       aggregatedSummary,
       pathLengthThld,
       segPathLengthDiffRatioThld,
-      gapDistThld
+      gapDistThld,
     });
 
     if (axioPaths !== null) {
@@ -612,10 +612,10 @@ const computeShapeLevelPathCombinationProperties = params => {
     }
   }
 
-  if (chosenPaths.some(p => p === null)) {
+  if (chosenPaths.some((p) => p === null)) {
     const nonAxioPaths = findNonAxiomaticPaths({
       chosenPaths,
-      aggregatedSummary
+      aggregatedSummary,
     });
 
     if (nonAxioPaths !== null) {
@@ -648,7 +648,7 @@ const computeShapeLevelPathCombinationProperties = params => {
 
         return shstLen / gtfsLen;
       }
-    )
+    ),
   };
 
   // const diffRatio =

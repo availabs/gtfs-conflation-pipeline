@@ -8,18 +8,18 @@ const _ = require("lodash");
 // //   Encapsulation with QA quanta/qualia metadata.
 // const DIST_BETWEEN_PAIRED_NODES = 0.002; // 2 meters
 
-const removeRedundantCoords = coords =>
+const removeRedundantCoords = (coords) =>
   coords.filter((coord, i) => !_.isEqual(coords[i - 1], coord));
 
 // NOTE: Requires the mergePathLineStringsUsingMetadata instance's "this" context via bind/call.
 function mergePathLineStringsUsingMetadata(S, T, shstMatchesById) {
   const sShstMatchIds = S.properties.pathDecompositionInfo
     .map(({ id }) => id)
-    .filter(id => id !== null);
+    .filter((id) => id !== null);
 
   const tShstMatchIds = T.properties.pathDecompositionInfo
     .map(({ id }) => id)
-    .filter(id => id !== null);
+    .filter((id) => id !== null);
 
   if (
     sShstMatchIds.length !== _.uniq(sShstMatchIds).length ||
@@ -162,15 +162,15 @@ function mergePathLineStringsUsingMetadata(S, T, shstMatchesById) {
   const mergedPath = turf.lineString(mergedCoords, mergedProperties);
 
   const {
-    properties: { gtfsNetworkEdgeLength }
+    properties: { gtfsNetworkEdgeLength },
   } = mergedPath;
 
   const {
-    properties: { mergeHistory: aMergeHistory = null }
+    properties: { mergeHistory: aMergeHistory = null },
   } = A;
 
   const {
-    properties: { mergeHistory: bMergeHistory = null }
+    properties: { mergeHistory: bMergeHistory = null },
   } = B;
 
   const mergeHistory =
@@ -182,8 +182,8 @@ function mergePathLineStringsUsingMetadata(S, T, shstMatchesById) {
     algo: "mergePathLineStringsUsingMetadata",
     shstMatchIds: [
       A.properties.pathDecompositionInfo.map(({ id }) => id),
-      B.properties.pathDecompositionInfo.map(({ id }) => id)
-    ]
+      B.properties.pathDecompositionInfo.map(({ id }) => id),
+    ],
   });
 
   mergedPath.properties.mergeHistory = mergeHistory;
@@ -197,7 +197,7 @@ function mergePathLineStringsUsingMetadata(S, T, shstMatchesById) {
   Object.assign(mergedPath.properties, {
     mergedShstMatchesLength,
     lengthDifference,
-    lengthRatio
+    lengthRatio,
   });
 
   return mergedPath;

@@ -2,8 +2,6 @@
 
 // https://en.wikipedia.org/wiki/Hausdorff_distance
 
-const { writeFileSync } = require("fs");
-
 const turf = require("@turf/turf");
 const _ = require("lodash");
 
@@ -14,7 +12,7 @@ const BEARING_CHANGE_THOLD = 45 * 1.5;
 function splitLineStringUsingSmoothness(
   feature,
   {
-    bearingChangeThreshold = BEARING_CHANGE_THOLD
+    bearingChangeThreshold = BEARING_CHANGE_THOLD,
     // minLengthThresholdKm = MIN_LENGTH_THOLD_KM,
     // maxLengthThresholdKm = MAX_LENGTH_THOLD_KM,
   } = {}
@@ -97,12 +95,7 @@ function splitLineStringUsingSmoothness(
   // )
   // );
 
-  const lineStrings = splitCoords.map(c => turf.lineString(c));
-
-  writeFileSync(
-    "split_linestring.geojson",
-    JSON.stringify(turf.featureCollection(lineStrings))
-  );
+  const lineStrings = splitCoords.map((c) => turf.lineString(c));
 
   return lineStrings;
 }

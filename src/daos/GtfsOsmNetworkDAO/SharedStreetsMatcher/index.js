@@ -7,7 +7,7 @@ const BATCH_SIZE = 25;
 
 const shstMatchFeatures = require("./shstMatchFeatures");
 
-const initializeUnmatchedFeaturesArray = features => {
+const initializeUnmatchedFeaturesArray = (features) => {
   const seenIds = new Set();
 
   return Array.isArray(features) && features.length
@@ -15,7 +15,7 @@ const initializeUnmatchedFeaturesArray = features => {
         const {
           id,
           properties,
-          geometry: { coordinates }
+          geometry: { coordinates },
         } = feature;
 
         const { id: propId } = properties;
@@ -62,11 +62,11 @@ async function match(features) {
     : shstMatchFeatures(unmatchedFeatures);
 }
 
-const removeOverlaps = matches => {
+const removeOverlaps = (matches) => {
   // Group the shst matches by GTFS network segment
   const matchesByTargetMapId = matches.reduce((acc, matchFeature) => {
     const {
-      properties: { pp_id }
+      properties: { pp_id },
     } = matchFeature;
 
     try {
@@ -101,7 +101,7 @@ const removeOverlaps = matches => {
     const matchesByShstRef = matchesByTargetMapId[tmId].reduce(
       (acc, matchFeature) => {
         const {
-          properties: { shstReferenceId }
+          properties: { shstReferenceId },
         } = matchFeature;
 
         // If there are other matches for this shstReferenceId,
@@ -112,7 +112,7 @@ const removeOverlaps = matches => {
           // Are the coordinates of this matchFeature a subset of the
           //   coordinates of some other matchFeature with the same shstReferenceId?
           const featureIsOverlappedByOther = acc[shstReferenceId].some(
-            other => {
+            (other) => {
               const numCoordsNotInOther = _.differenceWith(
                 coords,
                 turf.getCoords(other),
@@ -170,7 +170,7 @@ async function* matchSegmentedShapeFeatures(featuresIterator) {
 
       if (matches) {
         const keepers = removeOverlaps(matches);
-        const orderedMatches = _.sortBy(keepers, f => f.properties.pp_id);
+        const orderedMatches = _.sortBy(keepers, (f) => f.properties.pp_id);
 
         for (const matchFeature of orderedMatches) {
           yield { osrm_dir, matchFeature };
@@ -187,7 +187,7 @@ async function* matchSegmentedShapeFeatures(featuresIterator) {
 
   if (matches) {
     const keepers = removeOverlaps(matches);
-    const orderedMatches = _.sortBy(keepers, f => f.properties.pp_id);
+    const orderedMatches = _.sortBy(keepers, (f) => f.properties.pp_id);
 
     for (const matchFeature of orderedMatches) {
       yield { osrm_dir, matchFeature };
