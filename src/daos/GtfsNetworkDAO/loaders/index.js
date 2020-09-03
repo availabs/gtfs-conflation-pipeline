@@ -13,15 +13,15 @@
 const turf = require("@turf/turf");
 const _ = require("lodash");
 
-const db = require("../../../../services/DbService");
-const GeoJsonGtfsDAOFactory = require("../../../GeoJsonGtfsDAOFactory");
+const db = require("../../../services/DbService");
+const GeoJsonGtfsDAO = require("../../GeoJsonGtfsDAO");
 
 const SCHEMA = require("../DATABASE_SCHEMA_NAME");
 
 const { createShapeSegmentsTable } = require("../createTableFns");
 
-const roundGeometryCoordinates = require("../../../../utils/roundGeometryCoordinates");
-const getGeoProximityKey = require("../../../../utils/getGeoProximityKey");
+const roundGeometryCoordinates = require("../../../utils/roundGeometryCoordinates");
+const getGeoProximityKey = require("../../../utils/getGeoProximityKey");
 
 const snapGtfsStopsSequenceToGtfsShape = require("./snapGtfsStopsSequenceToGtfsShape");
 
@@ -63,7 +63,7 @@ const insertSlicedShape = (shapeLineString, stopPointsSeq) => {
 
   const headSnapGroup = {
     snapped_dist_along_km: 0,
-    stop_ids: [_.head(orderedSnaps).stop_id]
+    stop_ids: [_.head(orderedSnaps).stop_id],
   };
 
   const groupedSnaps = _.tail(orderedSnaps).reduce(
@@ -75,7 +75,7 @@ const insertSlicedShape = (shapeLineString, stopPointsSeq) => {
       } else {
         acc.push({
           snapped_dist_along_km,
-          stop_ids: [stop_id]
+          stop_ids: [stop_id],
         });
       }
 
@@ -94,11 +94,11 @@ const insertSlicedShape = (shapeLineString, stopPointsSeq) => {
     try {
       const {
         stop_ids: from_stop_ids,
-        snapped_dist_along_km: start_dist
+        snapped_dist_along_km: start_dist,
       } = groupedSnaps[shape_index];
       const {
         stop_ids: to_stop_ids,
-        snapped_dist_along_km: stop_dist
+        snapped_dist_along_km: stop_dist,
       } = groupedSnaps[shape_index + 1];
 
       let shapeSliceFeature;
@@ -118,7 +118,7 @@ const insertSlicedShape = (shapeLineString, stopPointsSeq) => {
               snaps: groupedSnaps[shape_index],
               shapeLen,
               start_dist,
-              stop_dist
+              stop_dist,
             },
             null,
             4
@@ -137,7 +137,7 @@ const insertSlicedShape = (shapeLineString, stopPointsSeq) => {
         from_stop_ids: _.uniq(from_stop_ids),
         to_stop_ids: _.uniq(to_stop_ids),
         start_dist: _.round(start_dist, 6),
-        stop_dist: _.round(stop_dist, 6)
+        stop_dist: _.round(stop_dist, 6),
       };
 
       // Ensure connectivity
@@ -154,7 +154,7 @@ const insertSlicedShape = (shapeLineString, stopPointsSeq) => {
         `${shape_id}`,
         `${shape_index}`,
         `${geoProximityKey}`,
-        JSON.stringify(shapeSliceFeature)
+        JSON.stringify(shapeSliceFeature),
       ]);
 
       ++id;
@@ -178,8 +178,7 @@ function load() {
 
     createShapeSegmentsTable(db);
 
-    const geoJsonGtfsDAO = GeoJsonGtfsDAOFactory.getDAO();
-    const iter = geoJsonGtfsDAO.makeShapesWithStopsIterator();
+    const iter = GeoJsonGtfsDAO.makeShapesWithStopsIterator();
 
     for (const { shape: shapeLineString, stops: stopPointsSeq } of iter) {
       insertSlicedShape(shapeLineString, stopPointsSeq);
@@ -195,5 +194,5 @@ function load() {
 }
 
 module.exports = {
-  load
+  load,
 };

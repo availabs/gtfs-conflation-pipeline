@@ -1,8 +1,8 @@
 /* eslint-disable no-restricted-syntax, jsdoc/require-jsdoc */
 
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
-const toParsedFeaturesIterator = require("../../../utils/toParsedFeaturesIterator");
+const toParsedFeaturesIterator = require("../../utils/toParsedFeaturesIterator");
 
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
@@ -25,5 +25,5 @@ function makeShapeSegmentsIterator() {
 }
 
 module.exports = {
-  makeShapeSegmentsIterator
+  makeShapeSegmentsIterator,
 };

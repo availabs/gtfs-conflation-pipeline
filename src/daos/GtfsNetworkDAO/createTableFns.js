@@ -1,6 +1,6 @@
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
-const createShapeSegmentsTable = db =>
+const createShapeSegmentsTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.shape_segments (
       id           INTEGER PRIMARY KEY,
@@ -18,5 +18,5 @@ const createShapeSegmentsTable = db =>
   `);
 
 module.exports = {
-  createShapeSegmentsTable
+  createShapeSegmentsTable,
 };

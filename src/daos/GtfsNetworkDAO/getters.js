@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-syntax, jsdoc/require-jsdoc */
 
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
@@ -44,5 +44,5 @@ function getSegmentedShape(shapeId) {
 
 module.exports = {
   getNetwork,
-  getSegmentedShape
+  getSegmentedShape,
 };
