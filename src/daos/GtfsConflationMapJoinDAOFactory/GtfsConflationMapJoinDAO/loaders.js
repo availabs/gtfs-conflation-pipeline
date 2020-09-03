@@ -161,6 +161,7 @@ function loadCospatialityTable() {
     conflation_map_feature,
     gtfs_matches_id,
     gtfs_matches_feature,
+    // NOTE: shst_ref_start & shst_ref_end are in meters.
     // shst_ref_start,
     // shst_ref_end,
   ] of iter) {
