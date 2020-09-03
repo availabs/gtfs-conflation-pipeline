@@ -1,12 +1,10 @@
-const main = require("./index");
+/* eslint-disable global-require */
 
 const command = "gtfs_as_geojson";
 const desc = "Transform the GTFS stops and shaped to GeoJSON Features";
 
-const handler = main;
-
 module.exports = {
   command,
   desc,
-  handler
+  handler: (...args) => require("./index")(...args),
 };

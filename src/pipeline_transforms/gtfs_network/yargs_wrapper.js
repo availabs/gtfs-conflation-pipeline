@@ -1,12 +1,10 @@
-const main = require('./index');
+/* eslint-disable global-require */
 
-const command = 'gtfs_network';
-const desc = 'Snap GeoJSON GTFS Stops to GTFS shapes to create a network';
-
-const handler = main;
+const command = "gtfs_network";
+const desc = "Snap GeoJSON GTFS Stops to GTFS shapes to create a network";
 
 module.exports = {
   command,
   desc,
-  handler
+  handler: (...args) => require("./index")(...args),
 };

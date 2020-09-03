@@ -1,4 +1,4 @@
-const main = require("./index");
+/* eslint-disable global-require */
 
 const command = "output_shapefile";
 const desc = "Output pipeline stage output as Esri shapefile";
@@ -7,15 +7,13 @@ const builder = {
   output_file: {
     desc: "File path of output shapefile",
     type: "string",
-    demand: true
-  }
+    demand: true,
+  },
 };
-
-const handler = main;
 
 module.exports = {
   command,
   desc,
   builder,
-  handler
+  handler: (...args) => require("./index")(...args),
 };

@@ -1,10 +1,10 @@
 /* eslint-disable no-restricted-syntax, jsdoc/require-jsdoc */
 
-const logger = require('../../services/Logger');
+const logger = require("../../services/Logger");
 
-const GtfsNetworkDAOFactory = require('../../daos/GtfsNetworkDAOFactory');
+const GtfsNetworkDAOFactory = require("../../daos/GtfsNetworkDAOFactory");
 
-const timerId = 'load GTFS network'
+const timerId = "load GTFS network";
 
 const main = async () => {
   try {

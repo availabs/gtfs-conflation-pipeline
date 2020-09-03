@@ -26,14 +26,12 @@ const main = async ({ gtfs_zip, output_dir }) => {
 
       // Convert the CSV to an Object stream
       const csvParseStream = csv.parse({
-        headers: true
+        headers: true,
       });
 
       const rowAsyncIterator = pipeline(zipEntry.stream(), csvParseStream);
 
-      const rowCt = await db_service.loadAsync(fileName, rowAsyncIterator, {
-        clean: true
-      });
+      const rowCt = await db_service.loadAsync(fileName, rowAsyncIterator);
 
       if (rowCt === null) {
         logger.warn(`No table created for ${fileName}.`);
