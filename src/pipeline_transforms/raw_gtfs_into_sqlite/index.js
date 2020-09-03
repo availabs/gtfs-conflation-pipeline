@@ -9,12 +9,10 @@ const csv = require("fast-csv");
 
 const logger = require("../../services/Logger");
 
-const RawGtfsDAO = require("../../daos/RawGtfsDAOFactory");
+const dao = require("../../daos/RawGtfsDAO");
 
 const main = async ({ gtfs_zip, output_dir }) => {
   try {
-    const db_service = RawGtfsDAO.getDAO();
-
     logger.time("load raw gtfs");
 
     const { files: zipEntries } = await unzipper.Open.file(gtfs_zip);
@@ -31,7 +29,7 @@ const main = async ({ gtfs_zip, output_dir }) => {
 
       const rowAsyncIterator = pipeline(zipEntry.stream(), csvParseStream);
 
-      const rowCt = await db_service.loadAsync(fileName, rowAsyncIterator);
+      const rowCt = await dao.loadAsync(fileName, rowAsyncIterator);
 
       if (rowCt === null) {
         logger.warn(`No table created for ${fileName}.`);

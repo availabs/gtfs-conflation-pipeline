@@ -2,11 +2,11 @@
 
 const memoizeOne = require("memoize-one");
 
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
-const getDowsForTrip = memoizeOne(trip_id => {
+const getDowsForTrip = memoizeOne((trip_id) => {
   const dows = db
     .prepare(
       `
@@ -30,5 +30,5 @@ const getDowsForTrip = memoizeOne(trip_id => {
 });
 
 module.exports = {
-  getDowsForTrip
+  getDowsForTrip,
 };

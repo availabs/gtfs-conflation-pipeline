@@ -2,9 +2,9 @@
 
 const _ = require("lodash");
 
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
-const formatRow = require("../../../utils/formatRowForSqliteInsert");
+const formatRow = require("../../utils/formatRowForSqliteInsert");
 
 const createTableFns = require("./createTableFns");
 

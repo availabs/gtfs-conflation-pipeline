@@ -11,7 +11,7 @@
 
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
-const createAgencyTable = db =>
+const createAgencyTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.agency (
         agency_id        TEXT PRIMARY KEY,
@@ -24,7 +24,7 @@ const createAgencyTable = db =>
         agency_email     TEXT
       ) WITHOUT ROWID ;`);
 
-const createStopsTable = db =>
+const createStopsTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.stops (
         stop_id              TEXT PRIMARY KEY,
@@ -40,7 +40,7 @@ const createStopsTable = db =>
         wheelchair_boarding  INTEGER
       ) WITHOUT ROWID ;`);
 
-const createRoutesTable = db =>
+const createRoutesTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.routes (
         route_id          TEXT PRIMARY KEY,
@@ -54,7 +54,7 @@ const createRoutesTable = db =>
         route_text_color  TEXT
       ) WITHOUT ROWID ;`);
 
-const createTripsTable = db =>
+const createTripsTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.trips (
         route_id               TEXT,
@@ -75,7 +75,7 @@ const createTripsTable = db =>
     CREATE INDEX IF NOT EXISTS ${SCHEMA}.trips_times_service_id_idx
       ON trips (service_id) ; `);
 
-const createStopTimesTable = db =>
+const createStopTimesTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.stop_times (
         trip_id              TEXT,
@@ -96,7 +96,7 @@ const createStopTimesTable = db =>
       ON stop_times (trip_id, stop_id) ;
   `);
 
-const createCalendarTable = db =>
+const createCalendarTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.calendar (
         service_id  TEXT PRIMARY KEY,
@@ -111,7 +111,7 @@ const createCalendarTable = db =>
         end_date    TEXT NOT NULL
       ) WITHOUT ROWID ;`);
 
-const createCalendarDatesTable = db =>
+const createCalendarDatesTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.calendar_dates (
         service_id      TEXT,
@@ -121,7 +121,7 @@ const createCalendarDatesTable = db =>
         PRIMARY KEY (service_id, date)
       ) WITHOUT ROWID ;`);
 
-const createFareAttributesTable = db =>
+const createFareAttributesTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.fare_attributes (
         fare_id            TEXT PRIMARY KEY,
@@ -133,7 +133,7 @@ const createFareAttributesTable = db =>
         transfer_duration  INTEGER
       ) WITHOUT ROWID;`);
 
-const createFareRulesTable = db =>
+const createFareRulesTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.fare_rules (
         fare_id         TEXT,
@@ -143,7 +143,7 @@ const createFareRulesTable = db =>
         contains_id     TEXT
       );`);
 
-const createShapesTable = db =>
+const createShapesTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.shapes (
         shape_id             TEXT,
@@ -155,7 +155,7 @@ const createShapesTable = db =>
         PRIMARY KEY (shape_id, shape_pt_sequence)
       ) WITHOUT ROWID;`);
 
-const createFrequenciesTable = db =>
+const createFrequenciesTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.frequencies (
         trip_id       TEXT PRIMARY KEY,
@@ -165,7 +165,7 @@ const createFrequenciesTable = db =>
         exact_times   INTEGER
       ) WITHOUT ROWID;`);
 
-const createTransfersTable = db =>
+const createTransfersTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.transfers (
         from_stop_id      TEXT NOT NULL,
@@ -174,7 +174,7 @@ const createTransfersTable = db =>
         min_transfer_time INTEGER
       );`);
 
-const createFeedInfoTable = db =>
+const createFeedInfoTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.feed_info (
         feed_publisher_name  TEXT PRIMARY KEY,
@@ -198,5 +198,5 @@ module.exports = {
   shapes: createShapesTable,
   frequencies: createFrequenciesTable,
   transfers: createTransfersTable,
-  feed_info: createFeedInfoTable
+  feed_info: createFeedInfoTable,
 };
