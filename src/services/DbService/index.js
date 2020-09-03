@@ -10,18 +10,24 @@ const memoizeOne = require("memoize-one");
 
 const IN_MEMORY = ":memory:";
 
+const registeredDatabases = Object.values(
+  require("../../constants/databaseSchemaNames")
+);
+
+const { AVL_GTFS_CONFLATION_OUTPUT_DIR } = process.env;
+
+if (!AVL_GTFS_CONFLATION_OUTPUT_DIR) {
+  console.error("The AVL_GTFS_CONFLATION_OUTPUT_DIR ENV must be set.");
+  console.error(
+    'It is the responsibility of any "main" module to ensure that it is set.'
+  );
+  process.exit(1);
+}
+
+const db = new Database(IN_MEMORY);
+
 // Needs to run after module is loaded so "main" has a chance to set.
 const getSqliteDir = memoizeOne(() => {
-  const { AVL_GTFS_CONFLATION_OUTPUT_DIR } = process.env;
-
-  if (!AVL_GTFS_CONFLATION_OUTPUT_DIR) {
-    console.error("The AVL_GTFS_CONFLATION_OUTPUT_DIR ENV must be set.");
-    console.error(
-      'It is the responsibility of any "main" module to ensure that it is set.'
-    );
-    process.exit(1);
-  }
-
   const sqliteDir = isAbsolute(AVL_GTFS_CONFLATION_OUTPUT_DIR)
     ? join(AVL_GTFS_CONFLATION_OUTPUT_DIR, "sqlite")
     : join(process.cwd(), AVL_GTFS_CONFLATION_OUTPUT_DIR, "sqlite");
@@ -31,7 +37,21 @@ const getSqliteDir = memoizeOne(() => {
   return sqliteDir;
 });
 
-const db = new Database(IN_MEMORY);
+const attachedDatabases = new Set();
+
+const attachDatabase = (databaseSchemaName) => {
+  if (attachedDatabases.has(databaseSchemaName)) {
+    return;
+  }
+
+  const databaseFilePath = join(getSqliteDir(), databaseSchemaName);
+
+  db.exec(`ATTACH DATABASE '${databaseFilePath}' AS ${databaseSchemaName};`);
+
+  attachedDatabases.add(databaseSchemaName);
+};
+
+registeredDatabases.forEach(attachDatabase);
 
 const getDatabaseFilePathForSchemaName = (databaseSchemaName) =>
   join(getSqliteDir(), databaseSchemaName);
@@ -48,20 +68,6 @@ const openLoadingConnectionToDb = (databaseSchemaName) => {
 
 const closeLoadingConnectionToDb = (xdb) => {
   xdb.close();
-};
-
-const attachedDatabases = new Set();
-
-const attachDatabase = (databaseSchemaName) => {
-  if (attachedDatabases.has(databaseSchemaName)) {
-    return;
-  }
-
-  const databaseFilePath = join(getSqliteDir(), databaseSchemaName);
-
-  db.exec(`ATTACH DATABASE '${databaseFilePath}' AS ${databaseSchemaName};`);
-
-  attachedDatabases.add(databaseSchemaName);
 };
 
 // Prepared statements are memoized
