@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
-/* eslint-disable jsdoc/require-jsdoc, no-restricted-syntax, no-await-in-loop */
+/* eslint-disable no-restricted-syntax, no-continue */
 
 const { createWriteStream } = require("fs");
+
+const _ = require("lodash");
 
 const Database = require("better-sqlite3");
 
@@ -28,19 +30,25 @@ const outputStream = createWriteStream(
 for (const [featureStr] of iter) {
   const feature = JSON.parse(featureStr);
   const {
+    id,
     properties: {
-      id,
-      networklevel,
+      networklevel: netlev,
       shstReferenceId: shstid,
       segmentIndex: shstidx,
       osm: {
         conflationMapMatchedTargetMapId: osmid,
-        conflationMapMatchedTargetMapIdx: osmidx
-      }
-    }
+        conflationMapMatchedTargetMapIdx: osmidx,
+      },
+    },
   } = feature;
 
-  feature.properties = { id, shstid, shstidx, osmid, osmidx, networklevel };
+  feature.properties = { id, shstid, shstidx, osmid, osmidx, netlev };
+
+  feature.geometry.coordinates = _(feature.geometry.coordinates)
+    .flattenDeep()
+    .map((coord) => _.round(coord, 6))
+    .chunk(2)
+    .value();
 
   outputStream.write(`${JSON.stringify(feature)}\n`);
 }

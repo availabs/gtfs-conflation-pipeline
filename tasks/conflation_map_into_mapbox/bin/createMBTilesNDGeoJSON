@@ -12,23 +12,23 @@ FILTER='
     "*": [
       "all",
       [ "any",
-        [ "<", "networklevel", 1 ],
-        [ ">=", "$zoom", 13 ],
+        [ "<", "netlev", 1 ],
+        [ ">=", "$zoom", 15 ],
         [ "all",
           [ ">=", "$zoom", 3 ],
-          [ "<=", "networklevel", 1 ]
+          [ "<=", "netlev", 1 ]
         ],
         [ "all",
-          [ ">=", "$zoom", 10 ],
-          [ "<=", "networklevel", 2 ]
-        ],
-        [ "all",
-          [ ">=", "$zoom", 12 ],
-          [ "<=", "networklevel", 3 ]
+          [ ">=", "$zoom", 11 ],
+          [ "<=", "netlev", 2 ]
         ],
         [ "all",
           [ ">=", "$zoom", 13 ],
-          [ "<=", "networklevel", 5 ]
+          [ "<=", "netlev", 3 ]
+        ],
+        [ "all",
+          [ ">=", "$zoom", 14 ],
+          [ "<=", "netlev", 5 ]
         ]
       ]
     ]
