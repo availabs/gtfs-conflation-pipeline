@@ -4,12 +4,12 @@ const assert = require("assert");
 const turf = require("@turf/turf");
 const _ = require("lodash");
 
-const db = require("../../../services/DbService");
-const RawGtfsDAOFactory = require("../../RawGtfsDAOFactory");
+const db = require("../../services/DbService");
+const RawGtfsDAO = require("../RawGtfsDAO");
 
-const getGeoProximityKey = require("../../../utils/getGeoProximityKey");
-const roundGeometryCoordinates = require("../../../utils/roundGeometryCoordinates");
-const formatRow = require("../../../utils/formatRowForSqliteInsert");
+const getGeoProximityKey = require("../../utils/getGeoProximityKey");
+const roundGeometryCoordinates = require("../../utils/roundGeometryCoordinates");
+const formatRow = require("../../utils/formatRowForSqliteInsert");
 
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 const { createStopsTable, createShapesTable } = require("./createTableFns");
@@ -132,18 +132,14 @@ function loadFeatures(tableName, featureIterator) {
 }
 
 function loadStops(opts) {
-  const rawGtfsDAO = RawGtfsDAOFactory.getDAO();
-
-  const gtfsStopsIterator = rawGtfsDAO.makeStopsIterator();
+  const gtfsStopsIterator = RawGtfsDAO.makeStopsIterator();
   const pointsIterator = toPointsIterator(gtfsStopsIterator);
 
   loadFeatures("stops", pointsIterator, opts);
 }
 
 function loadShapes(opts) {
-  const rawGtfsDAO = RawGtfsDAOFactory.getDAO();
-
-  const gtfsShapesIterator = rawGtfsDAO.makeShapesIterator();
+  const gtfsShapesIterator = RawGtfsDAO.makeShapesIterator();
   const lineStringsIterator = toLineStringsIterator(gtfsShapesIterator);
 
   loadFeatures("shapes", lineStringsIterator, opts);

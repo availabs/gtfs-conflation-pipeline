@@ -1,6 +1,6 @@
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
-const createStopsTable = db =>
+const createStopsTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.stops (
         id           TEXT PRIMARY KEY,
@@ -12,7 +12,7 @@ const createStopsTable = db =>
       ON stops (geoprox_key) ;
   `);
 
-const createShapesTable = db =>
+const createShapesTable = (db) =>
   db.exec(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.shapes (
         id           TEXT PRIMARY KEY,
@@ -26,5 +26,5 @@ const createShapesTable = db =>
 
 module.exports = {
   createStopsTable,
-  createShapesTable
+  createShapesTable,
 };

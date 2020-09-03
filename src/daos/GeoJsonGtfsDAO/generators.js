@@ -3,16 +3,16 @@
 const _ = require("lodash");
 const turf = require("@turf/turf");
 
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
-const toParsedFeaturesIterator = require("../../../utils/toParsedFeaturesIterator");
+const toParsedFeaturesIterator = require("../../utils/toParsedFeaturesIterator");
 
 const MILES = "miles";
 const KILOMETERS = "kilometers";
 
 const {
   RAW_GTFS: RAW_GTFS_SCHEMA,
-} = require("../../../constants/databaseSchemaNames");
+} = require("../../constants/databaseSchemaNames");
 
 const GEOJSON_SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
