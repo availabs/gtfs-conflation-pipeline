@@ -39,12 +39,9 @@ const getTableNameForGtfsFileName = (fileName) => {
  *
  * @param { string } fileName The GTFS file name
  * @param { symbol.async_iterator } rowAsyncIterator Async iterator of table row objects
- * @param { object } opts Loading options
  * @returns { number|null } Number of rows added, or NULL if table was not created.
  */
-async function loadAsync(fileName, rowAsyncIterator, opts) {
-  const { clean } = opts || {};
-
+async function loadAsync(fileName, rowAsyncIterator) {
   const tableName = getTableNameForGtfsFileName(fileName);
 
   if (!tableName) {
@@ -56,9 +53,7 @@ async function loadAsync(fileName, rowAsyncIterator, opts) {
   xdb.exec("BEGIN EXCLUSIVE;");
 
   try {
-    if (clean) {
-      xdb.exec(`DROP TABLE IF EXISTS ${tableName};`);
-    }
+    xdb.exec(`DROP TABLE IF EXISTS ${tableName};`);
 
     const createTableFn = createTableFns[tableName];
 
@@ -92,7 +87,7 @@ async function loadAsync(fileName, rowAsyncIterator, opts) {
     return rowCt;
   } catch (err) {
     // Why we want the transaction.
-    // This will rollback the DROP TABLE statement if opts.clean was true.
+    // This will rollback the DROP TABLE statements.
     console.error(err);
     xdb.exec("ROLLBACK;");
     throw err;

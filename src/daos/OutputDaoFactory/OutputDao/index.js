@@ -5,7 +5,7 @@ const generators = require("./generators");
 class GtfsNetworkDAO {
   constructor() {
     assimilate(this, {
-      ...generators
+      ...generators,
     });
   }
 }

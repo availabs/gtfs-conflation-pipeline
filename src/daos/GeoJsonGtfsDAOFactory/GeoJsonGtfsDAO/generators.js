@@ -11,7 +11,7 @@ const MILES = "miles";
 const KILOMETERS = "kilometers";
 
 const {
-  RAW_GTFS: RAW_GTFS_SCHEMA
+  RAW_GTFS: RAW_GTFS_SCHEMA,
 } = require("../../../constants/databaseSchemaNames");
 
 const GEOJSON_SCHEMA = require("./DATABASE_SCHEMA_NAME");
@@ -43,7 +43,7 @@ const convertStopsShapeDistTraveledToKilometers = (shape, stopsSeq) => {
   const lastDistTraveled = _.last(seq).shape_dist_traveled;
 
   if (!Number.isFinite(lastDistTraveled)) {
-    stopsSeq.forEach(trip_stop => {
+    stopsSeq.forEach((trip_stop) => {
       trip_stop.shape_dist_traveled = null;
     });
     return stopsSeq;
@@ -55,12 +55,12 @@ const convertStopsShapeDistTraveledToKilometers = (shape, stopsSeq) => {
   const km = turf.length(shape, { units: KILOMETERS });
   const m = km * 1000;
 
-  const closest = _.sortBy([mi, ft, km, m], x =>
+  const closest = _.sortBy([mi, ft, km, m], (x) =>
     Math.abs(lastDistTraveled - x)
   );
 
   if (closest === mi) {
-    seq.forEach(s => {
+    seq.forEach((s) => {
       s.shape_dist_traveled *= 1.60934;
     });
 
@@ -68,13 +68,13 @@ const convertStopsShapeDistTraveledToKilometers = (shape, stopsSeq) => {
   }
 
   if (closest === ft) {
-    seq.forEach(s => {
+    seq.forEach((s) => {
       s.shape_dist_traveled *= 1.60934 / 5280;
     });
   }
 
   if (closest === m) {
-    seq.forEach(s => {
+    seq.forEach((s) => {
       s.shape_dist_traveled /= 1000;
     });
   }
@@ -177,10 +177,10 @@ function* makeShapesWithStopsIterator() {
     //   Stop sequence ordering now GUARANTEED.
     const stopSeqs = _.uniqWith(
       JSON.parse(stopSeqArrs).map(
-        stopSeq =>
+        (stopSeq) =>
           Object.keys(stopSeq)
             .sort((seq_num_a, seq_num_b) => +seq_num_a - +seq_num_b) // Sort (stop_sequences col) as numbers
-            .map(seqNum => stopSeq[seqNum]) // output array of { stop_id, shape_dist_traveled } in seq order
+            .map((seqNum) => stopSeq[seqNum]) // output array of { stop_id, shape_dist_traveled } in seq order
       ),
       _.isEqual // remove dupes
     ).sort((a, b) => b.length - a.length); // sort in descending order by seq length
@@ -189,7 +189,7 @@ function* makeShapesWithStopsIterator() {
 
     // Filter out any of the remaining stop sequences
     //   if they are subsequences of the longest
-    const nonSubSeqs = stopSeqs.slice(1).filter(seq => {
+    const nonSubSeqs = stopSeqs.slice(1).filter((seq) => {
       const n = seq.length;
       let i = 0;
 
@@ -230,7 +230,7 @@ function* makeShapesWithStopsIterator() {
 
     const stopsById = stops.reduce((acc, stop) => {
       const {
-        properties: { stop_id }
+        properties: { stop_id },
       } = stop;
 
       acc[stop_id] = stop;
@@ -261,7 +261,7 @@ function* makeShapesWithStopsIterator() {
     // TODO: Either make this a database FOREIGN KEY constraint,
     //         or handle it by logging the INVARIANT violation
     //         and moving on to the next shape.
-    if (stopsArr.some(stop => _.isNil(stop))) {
+    if (stopsArr.some((stop) => _.isNil(stop))) {
       throw new Error("Stops from stop_trips not in stops table.");
     }
 
@@ -293,5 +293,5 @@ function makeShapesIterator() {
 module.exports = {
   makeStopsIterator,
   makeShapesIterator,
-  makeShapesWithStopsIterator
+  makeShapesWithStopsIterator,
 };

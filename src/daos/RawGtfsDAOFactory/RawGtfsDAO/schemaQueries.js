@@ -14,7 +14,7 @@ const SUPPORTED_TABLES = require("./SUPPORTED_TABLES");
  * @returns { string[]|null } tableNamesList[]
  */
 function listTables() {
-  const supportedTablesList = SUPPORTED_TABLES.map(t => `'${t}'`).join();
+  const supportedTablesList = SUPPORTED_TABLES.map((t) => `'${t}'`).join();
 
   const listTablesStmt = db.prepare(`
     SELECT name
@@ -60,5 +60,5 @@ function listColumnsForTable(tableName) {
 
 module.exports = {
   listTables,
-  listColumnsForTable
+  listColumnsForTable,
 };

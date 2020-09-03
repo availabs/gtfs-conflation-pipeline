@@ -32,7 +32,7 @@ function getGtfsMap() {
       )
       .raw()
       .all()
-      .map(f => JSON.parse(f))
+      .map((f) => JSON.parse(f))
   );
 
   const shapes = _.flattenDeep(
@@ -46,7 +46,7 @@ function getGtfsMap() {
       )
       .raw()
       .all()
-      .map(f => JSON.parse(f))
+      .map((f) => JSON.parse(f))
   );
 
   return turf.featureCollection(Array.prototype.concat(stops, shapes));
@@ -54,5 +54,5 @@ function getGtfsMap() {
 
 module.exports = {
   getStopIdsInGeoOrder,
-  getGtfsMap
+  getGtfsMap,
 };

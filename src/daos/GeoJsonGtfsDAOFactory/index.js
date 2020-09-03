@@ -13,5 +13,5 @@ const getDAO = () => {
 };
 
 module.exports = {
-  getDAO
+  getDAO,
 };

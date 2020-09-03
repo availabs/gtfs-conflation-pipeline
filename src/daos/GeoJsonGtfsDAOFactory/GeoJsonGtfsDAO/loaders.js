@@ -20,7 +20,7 @@ function* toPointsIterator(gtfsStopsIterator) {
     const properties = _.omit(row, ["stop_lon", "stop_lat"]);
 
     const feature = turf.point([stop_lon, stop_lat], properties, {
-      id: stop_id
+      id: stop_id,
     });
 
     roundGeometryCoordinates(feature);
@@ -38,7 +38,7 @@ function* toLineStringsIterator(gtfsShapesIterator) {
     shape_id,
     shape_pt_lat,
     shape_pt_lon,
-    shape_pt_sequence
+    shape_pt_sequence,
   } of gtfsShapesIterator) {
     if (curShapeId) {
       if (curShapeId === shape_id) {
@@ -82,17 +82,13 @@ function* toLineStringsIterator(gtfsShapesIterator) {
   }
 }
 
-function loadFeatures(tableName, featureIterator, opts) {
-  const { clean } = opts;
-
+function loadFeatures(tableName, featureIterator) {
   db.unsafeMode(true);
 
   try {
     db.exec("BEGIN");
 
-    if (clean) {
-      db.exec(`DROP TABLE IF EXISTS ${SCHEMA}.${tableName};`);
-    }
+    db.exec(`DROP TABLE IF EXISTS ${SCHEMA}.${tableName};`);
 
     if (tableName === "stops") {
       createStopsTable(db);
@@ -120,7 +116,7 @@ function loadFeatures(tableName, featureIterator, opts) {
       const params = formatRow(["id", "geoproxKey", "feature"], {
         id,
         geoproxKey,
-        feature: stringifiedFeature
+        feature: stringifiedFeature,
       });
 
       featureInsertStmt.run(params);
@@ -159,5 +155,5 @@ function load(opts) {
 }
 
 module.exports = {
-  load
+  load,
 };
