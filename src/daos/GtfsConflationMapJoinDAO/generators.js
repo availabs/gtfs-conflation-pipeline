@@ -26,19 +26,16 @@
 const _ = require("lodash");
 const turf = require("@turf/turf");
 
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
 const {
   CONFLATION_MAP,
   GTFS_CONFLATION_MAP_JOIN,
-} = require("../../../constants/databaseSchemaNames");
+} = require("../../constants/databaseSchemaNames");
 
 const SLICE_THLD = 0.005;
 
 function* makeGtfsConflationMapJoinIterator() {
-  db.attachDatabase(CONFLATION_MAP);
-  db.attachDatabase(GTFS_CONFLATION_MAP_JOIN);
-
   const iterQuery = db.prepare(`
       SELECT
           gtfs_shape_id,

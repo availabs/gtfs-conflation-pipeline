@@ -44,12 +44,12 @@
 //     TODO: Confirm we aren't using a truncated geometry for a Shst Reference
 
 const _ = require("lodash");
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
 const {
   GTFS_OSM_NETWORK,
   CONFLATION_MAP,
-} = require("../../../constants/databaseSchemaNames");
+} = require("../../constants/databaseSchemaNames");
 
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
@@ -60,7 +60,7 @@ const {
   createGtfsMatchesConflationMapJoinTable,
 } = require("./createTableFns");
 
-const getCospatialityOfLinestrings = require("../../../utils/gis/getCospatialityOfLinestrings");
+const getCospatialityOfLinestrings = require("../../utils/gis/getCospatialityOfLinestrings");
 
 function loadCospatialityTable() {
   db.exec(`DROP TABLE IF EXISTS ${SCHEMA}.map_segments_cospatiality ;`);
@@ -366,9 +366,6 @@ function load() {
   db.unsafeMode(true);
 
   try {
-    db.attachDatabase(GTFS_OSM_NETWORK);
-    db.attachDatabase(CONFLATION_MAP);
-
     db.exec("BEGIN");
 
     loadCospatialityTable();

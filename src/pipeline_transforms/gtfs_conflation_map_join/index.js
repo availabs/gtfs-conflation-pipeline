@@ -2,13 +2,12 @@
 
 const logger = require("../../services/Logger");
 
-const DAOFactory = require("../../daos/GtfsConflationMapJoinDAOFactory");
+const dao = require("../../daos/GtfsConflationMapJoinDAO");
 
 const timerId = "join GTFS shapes to conflation map";
 
 const main = async () => {
   try {
-    const dao = DAOFactory.getDAO();
     logger.time(timerId);
     dao.load();
     logger.timeEnd(timerId);
