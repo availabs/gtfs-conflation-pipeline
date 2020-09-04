@@ -9,12 +9,12 @@ const _ = require("lodash");
 const {
   GEOJSON_GTFS,
   GTFS_NETWORK,
-} = require("../../../constants/databaseSchemaNames");
+} = require("../../constants/databaseSchemaNames");
 
-const GeoJsonGtfsDAOFactory = require("../../GeoJsonGtfsDAOFactory");
-const GtfsNetworkDAOFactory = require("../../GtfsNetworkDAOFactory");
-const GtfsOsmNetworkDaoFactory = require("../../GtfsOsmNetworkDaoFactory");
-const GtfsConflationMapJoinDAOFactory = require("../../GtfsConflationMapJoinDAOFactory");
+const GeoJsonGtfsDAO = require("../GeoJsonGtfsDAO");
+const GtfsNetworkDAO = require("../GtfsNetworkDAO");
+const GtfsOsmNetworkDAO = require("../GtfsOsmNetworkDAO");
+const GtfsConflationMapJoinDAO = require("../GtfsConflationMapJoinDAO");
 
 const wgs84 = gdal.SpatialReference.fromEPSG(4326);
 
@@ -85,9 +85,7 @@ const addGeoJsonStopsLayer = (dataset) => {
     addFieldToLayer(layer, name, type);
   }
 
-  const dao = GeoJsonGtfsDAOFactory.getDAO();
-
-  const iter = dao.makeStopsIterator();
+  const iter = GeoJsonGtfsDAO.makeStopsIterator();
 
   for (const geojsonPoint of iter) {
     const gdalFeature = new gdal.Feature(layer);
@@ -122,9 +120,7 @@ const addGeoJsonShapesLayer = (dataset) => {
 
   addFieldToLayer(layer, "shape_id", gdal.OFTString);
 
-  const dao = GeoJsonGtfsDAOFactory.getDAO();
-
-  const iter = dao.makeShapesIterator();
+  const iter = GeoJsonGtfsDAO.makeShapesIterator();
 
   for (const geojsonLineString of iter) {
     const gdalFeature = new gdal.Feature(layer);
@@ -165,9 +161,7 @@ const addGtfsNetworkLayer = (dataset) => {
     addFieldToLayer(layer, name, type);
   }
 
-  const dao = GtfsNetworkDAOFactory.getDAO();
-
-  const iter = dao.makeShapeSegmentsIterator();
+  const iter = GtfsNetworkDAO.makeShapeSegmentsIterator();
 
   for (const geojsonLineString of iter) {
     const gdalFeature = new gdal.Feature(layer);
@@ -229,9 +223,7 @@ const addShstMatchesLayer = (dataset) => {
     addFieldToLayer(layer, name, type);
   }
 
-  const dao = GtfsOsmNetworkDaoFactory.getDAO();
-
-  const iter = dao.makeAllShstMatchesIterator();
+  const iter = GtfsOsmNetworkDAO.makeAllShstMatchesIterator();
 
   for (const shstMatch of iter) {
     const gdalFeature = new gdal.Feature(layer);
@@ -287,14 +279,9 @@ const addChosenShstMatchesLayer = (dataset) => {
     addFieldToLayer(layer, name, type);
   }
 
-  const dao = GtfsOsmNetworkDaoFactory.getDAO();
-
-  const iter = dao.makeAllChosenShstMatchesIterator();
+  const iter = GtfsOsmNetworkDAO.makeAllChosenShstMatchesIterator();
 
   for (const shstMatch of iter) {
-    console.log("-".repeat(20));
-    console.log(JSON.stringify(shstMatch, null, 4));
-    console.log();
     const gdalFeature = new gdal.Feature(layer);
 
     Object.keys(shstMatch.properties).forEach((prop) => {
@@ -347,9 +334,7 @@ const addConflationJoinLayer = (dataset) => {
     addFieldToLayer(layer, name, type);
   }
 
-  const dao = GtfsConflationMapJoinDAOFactory.getDAO();
-
-  const iter = dao.makeGtfsConflationMapJoinIterator();
+  const iter = GtfsConflationMapJoinDAO.makeGtfsConflationMapJoinIterator();
 
   for (const multiLineString of iter) {
     const gdalFeature = new gdal.Feature(layer);
@@ -409,11 +394,11 @@ function outputShapefile(output_file) {
 
   const dataset = gdal.open(output_file, "w", "ESRI Shapefile");
 
-  // addGeoJsonStopsLayer(dataset);
-  // addGeoJsonShapesLayer(dataset);
-  // addGtfsNetworkLayer(dataset);
-  // addShstMatchesLayer(dataset);
-  // addChosenShstMatchesLayer(dataset);
+  addGeoJsonStopsLayer(dataset);
+  addGeoJsonShapesLayer(dataset);
+  addGtfsNetworkLayer(dataset);
+  addShstMatchesLayer(dataset);
+  addChosenShstMatchesLayer(dataset);
   addConflationJoinLayer(dataset);
 
   dataset.close();

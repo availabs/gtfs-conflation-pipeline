@@ -1,12 +1,11 @@
 const logger = require("../../services/Logger");
 
-const OutputDaoFactory = require("../../daos/OutputDaoFactory");
+const dao = require("../../daos/OutputDAO");
 
 const main = async ({ output_file }) => {
   try {
-    const outputDao = OutputDaoFactory.getDAO();
     logger.time("output_shapefile");
-    outputDao.outputShapefile(output_file);
+    dao.outputShapefile(output_file);
     logger.timeEnd("output_shapefile");
   } catch (err) {
     logger.error(err);
