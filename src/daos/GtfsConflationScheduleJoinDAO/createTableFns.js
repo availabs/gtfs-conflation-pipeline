@@ -1,7 +1,7 @@
 const {
   RAW_GTFS,
   GTFS_SCHEDULED_TRAFFIC,
-} = require("../../../constants/databaseSchemaNames");
+} = require("../../constants/databaseSchemaNames");
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
 const createGtfsSyntheticProbeDataTable = (db) =>

@@ -2,13 +2,12 @@
 
 const logger = require("../../services/Logger");
 
-const DAOFactory = require("../../daos/GtfsConflationScheduleJoinDAOFactory");
+const dao = require("../../daos/GtfsConflationScheduleJoinDAO");
 
 const timerId = "gtfs_conflation_schedule_join";
 
 const main = async () => {
   try {
-    const dao = DAOFactory.getDAO();
     logger.time(timerId);
     dao.load();
     logger.timeEnd(timerId);

@@ -39,14 +39,13 @@ npmrds_production=# select floor(networklev), avg(posted_speed_limit) from confl
 */
 
 const _ = require("lodash");
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
 const {
-  RAW_GTFS,
   GTFS_SCHEDULED_TRAFFIC,
   CONFLATION_MAP,
   GTFS_CONFLATION_MAP_JOIN,
-} = require("../../../constants/databaseSchemaNames");
+} = require("../../constants/databaseSchemaNames");
 
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
