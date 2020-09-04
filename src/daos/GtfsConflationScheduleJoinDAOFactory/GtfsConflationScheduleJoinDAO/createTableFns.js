@@ -20,9 +20,6 @@ const createGtfsSyntheticProbeDataTable = (db) =>
   `);
 
 const createGtfsAggregations = (db) => {
-  db.attachDatabase(RAW_GTFS);
-  db.attachDatabase(GTFS_SCHEDULED_TRAFFIC);
-
   db.exec(`
     DROP TABLE IF EXISTS ${SCHEMA}.gtfs_scheduled_traffic_by_route ;
 

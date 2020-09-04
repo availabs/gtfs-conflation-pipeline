@@ -97,8 +97,6 @@ const convertStopsShapeDistTraveledToKilometers = (shape, stopsSeq) => {
  * NOTE: Excludes shapes with no stops due to INNER JOIN.
  */
 function* makeShapesWithStopsIterator() {
-  db.attachDatabase(RAW_GTFS_SCHEMA);
-
   // NOTE: SQLite does NOT guarantee ordering within group_concat.
   //   See: https://stackoverflow.com/questions/1897352/sqlite-group-concat-ordering
   const iterQuery = db.prepare(`

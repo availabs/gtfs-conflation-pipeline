@@ -348,8 +348,6 @@ const createTemporaryServiceDatesAndDowsTable = (db) => {
 };
 
 const createServiceDatesTable = (db) => {
-  db.attachDatabase(RAW_GTFS);
-
   createTemporaryGtfsTables(db);
   createFeedDateExtentsTable(db);
   createTemporaryServiceDatesAndDowsTable(db);

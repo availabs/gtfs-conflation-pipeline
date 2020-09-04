@@ -126,11 +126,6 @@ const sec2epoch = (sec) => Math.floor(sec / 60 / 5);
 */
 
 function loadGtfsSyntheticProbeDataTable() {
-  db.attachDatabase(RAW_GTFS);
-  db.attachDatabase(GTFS_SCHEDULED_TRAFFIC);
-  db.attachDatabase(CONFLATION_MAP);
-  db.attachDatabase(GTFS_CONFLATION_MAP_JOIN);
-
   db.exec(`DROP TABLE IF EXISTS ${SCHEMA}.gtfs_synthetic_probe_data ;`);
 
   createGtfsSyntheticProbeDataTable(db);

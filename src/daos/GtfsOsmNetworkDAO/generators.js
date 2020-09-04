@@ -27,8 +27,6 @@ const {
 // ) ;
 //
 function* makeMatchesIterator() {
-  db.attachDatabase(GTFS_NETWORK);
-
   const iterQuery = db.prepare(`
       SELECT
           network_edges.feature AS gtfs_network_edge,
@@ -64,8 +62,6 @@ function* makeMatchesIterator() {
 //   This is because the load of tmp_shst_match_features
 //     has not yet been committed, so db will not see it.
 function* makeShapeMatchesIterator() {
-  db.attachDatabase(GTFS_NETWORK);
-
   const iterQuery = db.prepare(`
       SELECT
           -- An array of (GTFS Shape Segs, ShstMatches), for each GTFS Shape.
@@ -168,8 +164,6 @@ function* makeAllShstMatchesIterator() {
       ) ;
 */
 function* makeAllChosenShstMatchesIterator() {
-  db.attachDatabase(GTFS_NETWORK);
-
   const iterQuery = db.prepare(`
       SELECT DISTINCT
           feature
