@@ -11,9 +11,11 @@ const logger = require("../../services/Logger");
 
 const dao = require("../../daos/RawGtfsDAO");
 
+const timerId = "load raw gtfs";
+
 const main = async ({ gtfs_zip, output_dir }) => {
   try {
-    logger.time("load raw gtfs");
+    logger.time(timerId);
 
     const { files: zipEntries } = await unzipper.Open.file(gtfs_zip);
 
@@ -42,7 +44,7 @@ const main = async ({ gtfs_zip, output_dir }) => {
       copyFileSync(gtfs_zip, zipArchiveCopyPath);
     }
 
-    logger.timeEnd("load raw gtfs");
+    logger.timeEnd(timerId);
   } catch (err) {
     if (err.message === "database is locked") {
       console.error(

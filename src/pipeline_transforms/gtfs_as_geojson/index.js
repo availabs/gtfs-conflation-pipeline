@@ -4,11 +4,13 @@ const logger = require("../../services/Logger");
 
 const dao = require("../../daos/GeoJsonGtfsDAO");
 
+const timerId = "load gtfs as geojson";
+
 const main = async () => {
   try {
-    logger.time("load gtfs as geojson");
+    logger.time(timerId);
     dao.load();
-    logger.timeEnd("load gtfs as geojson");
+    logger.timeEnd(timerId);
   } catch (err) {
     logger.error(err);
     process.exit(1);

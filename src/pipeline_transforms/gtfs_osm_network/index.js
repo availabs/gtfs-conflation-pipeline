@@ -2,13 +2,15 @@
 
 const logger = require("../../services/Logger");
 
-const GtfsOsmNetworkDAO = require("../../daos/GtfsOsmNetworkDAO");
+const dao = require("../../daos/GtfsOsmNetworkDAO");
+
+const timerId = "load gtfs-osm network";
 
 const main = async () => {
   try {
-    console.time("load gtfs-osm network");
-    await GtfsOsmNetworkDAO.load();
-    console.timeEnd("load gtfs-osm network");
+    console.time(timerId);
+    await dao.load();
+    console.timeEnd(timerId);
   } catch (err) {
     logger.error(err);
     process.exit(1);

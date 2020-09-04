@@ -2,13 +2,12 @@
 
 const logger = require("../../services/Logger");
 
-const GtfsScheduledTrafficDAOFactory = require("../../daos/GtfsScheduledTrafficDAOFactory");
+const dao = require("../../daos/GtfsScheduledTrafficDAO");
 
 const timerId = "load schduled bus traffic";
 
 const main = async () => {
   try {
-    const dao = GtfsScheduledTrafficDAOFactory.getDAO();
     logger.time(timerId);
     dao.load();
     logger.timeEnd(timerId);

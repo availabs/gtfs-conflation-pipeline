@@ -12,14 +12,14 @@ const assert = require("assert");
 
 const _ = require("lodash");
 
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
-const logger = require("../../../services/Logger");
+const logger = require("../../services/Logger");
 
-const RawGtfsDAOFactory = require("../../RawGtfsDAOFactory");
-const GtfsNetworkDAOFactory = require("../../GtfsNetworkDAOFactory");
+const RawGtfsDAO = require("../RawGtfsDAO");
+const GtfsNetworkDAO = require("../GtfsNetworkDAO");
 
-const { RAW_GTFS } = require("../../../constants/databaseSchemaNames");
+const { RAW_GTFS } = require("../../constants/databaseSchemaNames");
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
 const {
@@ -112,8 +112,6 @@ function initializeDataStructures() {
 
 class TripTracker {
   constructor({ trip_id, shape_id }) {
-    const gtfsNetworkDAO = GtfsNetworkDAOFactory.getDAO();
-
     this.trip_id = trip_id;
 
     // NOTE: a shape may contain more stops than the trip
@@ -121,7 +119,7 @@ class TripTracker {
     this.shape_id = shape_id;
 
     // GeoJSON[]
-    this.segmentedShape = gtfsNetworkDAO.getSegmentedShape(shape_id);
+    this.segmentedShape = GtfsNetworkDAO.getSegmentedShape(shape_id);
 
     // TODO: DOCUMENT THIS INVARIANT
     //
@@ -284,13 +282,11 @@ class TripTracker {
 }
 
 function loadTripStopTimes() {
-  const rawGtfsDAO = RawGtfsDAOFactory.getDAO();
-
   db.exec(`DROP TABLE IF EXISTS ${SCHEMA}.scheduled_transit_traffic;`);
 
   createScheduledTransitTrafficTable(db);
 
-  const scheduledStopsIter = rawGtfsDAO.makeScheduledStopsIterator();
+  const scheduledStopsIter = RawGtfsDAO.makeScheduledStopsIterator();
 
   let tripTracker = null;
 

@@ -78,7 +78,7 @@
 */
 
 const _ = require("lodash");
-const { RAW_GTFS } = require("../../../constants/databaseSchemaNames");
+const { RAW_GTFS } = require("../../constants/databaseSchemaNames");
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
 const createScheduledTransitTrafficTable = (db) =>
