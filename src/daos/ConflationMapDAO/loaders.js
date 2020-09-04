@@ -7,11 +7,11 @@ const Database = require("better-sqlite3");
 const turf = require("@turf/turf");
 const _ = require("lodash");
 
-const db = require("../../../services/DbService");
+const db = require("../../services/DbService");
 
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 const { createConflationMapTable } = require("./createTableFns");
-const roundGeometryCoordinates = require("../../../utils/roundGeometryCoordinates");
+const roundGeometryCoordinates = require("../../utils/roundGeometryCoordinates");
 
 const targetMaps = [
   "ris_2016",

@@ -2,13 +2,12 @@
 
 const logger = require("../../services/Logger");
 
-const ConflationMapDAOFactory = require("../../daos/ConflationMapDAOFactory");
+const dao = require("../../daos/ConflationMapDAO");
 
 const timerId = "load OSM/RIS/NPMRDS conflation map";
 
 const main = async ({ conflation_map_sqlite_db }) => {
   try {
-    const dao = ConflationMapDAOFactory.getDAO();
     logger.time(timerId);
     dao.load(conflation_map_sqlite_db);
     logger.timeEnd(timerId);
