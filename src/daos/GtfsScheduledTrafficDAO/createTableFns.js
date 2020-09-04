@@ -217,7 +217,7 @@ const createTemporaryGtfsTables = (db) => {
 
 const createFeedDateExtentsTable = (db) => {
   // Get the official feed start date
-  const { feed_start_date } =
+  let { feed_start_date } =
     // Prefer the feed_info start_date
     db
       .prepare(
@@ -229,9 +229,11 @@ const createFeedDateExtentsTable = (db) => {
           ;
         `
       )
-      .get() ||
+      .get();
+
+  if (_.isNil(feed_start_date)) {
     // Fall back to the the calendar tables
-    db
+    feed_start_date = db
       .prepare(
         `
           SELECT
@@ -249,11 +251,11 @@ const createFeedDateExtentsTable = (db) => {
           ;
         `
       )
-      .get() ||
-    {};
+      .get().feed_start_date;
+  }
 
   // Get the official feed end date
-  const { feed_end_date } =
+  let { feed_end_date } =
     // Prefer the feed_info date extent
     db
       .prepare(
@@ -265,9 +267,11 @@ const createFeedDateExtentsTable = (db) => {
           ;
         `
       )
-      .get() ||
+      .get();
+
+  if (_.isNil(feed_end_date)) {
     // Fall back to the the calendar tables
-    db
+    feed_end_date = db
       .prepare(
         `
           SELECT
@@ -285,8 +289,8 @@ const createFeedDateExtentsTable = (db) => {
           ;
         `
       )
-      .get() ||
-    {};
+      .get().feed_end_date;
+  }
 
   if (_.isNaN(feed_start_date) || _.isNil(feed_end_date)) {
     throw new Error("Unable to determine the feed date extent.");
