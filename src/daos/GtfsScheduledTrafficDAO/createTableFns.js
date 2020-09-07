@@ -81,77 +81,8 @@ const _ = require("lodash");
 const { RAW_GTFS } = require("../../constants/databaseSchemaNames");
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
-const createScheduledTransitTrafficTable = (db) =>
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS ${SCHEMA}.scheduled_transit_traffic (
-        shape_id            TEXT,
-        departure_seg_idx   INTEGER,
-        arrival_seg_idx     INTEGER,
-
-        departure_time_sec  INTEGER,
-        arrival_time_sec    INTEGER,
-
-        trip_id             TEXT,
-
-      PRIMARY KEY (
-        shape_id,
-        departure_seg_idx,
-        arrival_seg_idx,
-        departure_time_sec,
-        arrival_time_sec,
-        trip_id
-      )
-    ) WITHOUT ROWID ;
-  `);
-
-const createTemporaryGtfsTables = (db) => {
-  // Determine which tables are included in this GTFS feed.
-  const { has_feed_info, has_calendar_table, has_calendar_dates_table } = db
-    .prepare(
-      `
-        SELECT
-            EXISTS (
-              SELECT
-                  1
-                FROM ${RAW_GTFS}.sqlite_master
-                WHERE (
-                  ( type = 'table' )
-                  AND
-                  ( name = 'feed_info' )
-                )
-            ) AS has_feed_info,
-            EXISTS (
-              SELECT
-                  1
-                FROM ${RAW_GTFS}.sqlite_master
-                WHERE (
-                  ( type = 'table' )
-                  AND
-                  ( name = 'calendar' )
-                )
-            ) AS has_calendar_table,
-            EXISTS (
-              SELECT
-                  1
-                FROM ${RAW_GTFS}.sqlite_master
-                WHERE (
-                  ( type = 'table' )
-                  AND
-                  ( name = 'calendar_dates' )
-                )
-            ) AS has_calendar_dates_table ;`
-    )
-    .get();
-
-  if (!(has_feed_info || has_calendar_table || has_calendar_dates_table)) {
-    throw new Error(`GTFS feed must have at least one of the following files:
-      * feed_info
-      * calendar
-      * calendar_dates
-    `);
-  }
-
-  if (has_feed_info) {
+const createTmpFeedInfo = (db, has_feed_info_table) => {
+  if (has_feed_info_table) {
     db.exec(`
       -- Create an alias VIEW
       CREATE TEMPORARY VIEW tmp_feed_info
@@ -167,10 +98,9 @@ const createTemporaryGtfsTables = (db) => {
       ) ;
     `);
   }
+};
 
-  // Because the calendar and calendar_dates tables are optional,
-  //   we create views so that the CREATE service_dates table
-  //   is uniform across GTFS archives.
+const createTmpCalendar = (db, has_calendar_table) => {
   if (has_calendar_table) {
     db.exec(`
       -- Create an alias VIEW
@@ -195,7 +125,12 @@ const createTemporaryGtfsTables = (db) => {
       ) ;
     `);
   }
+};
 
+const createTmpCalendarDates = (db, has_calendar_dates_table) => {
+  // Because the calendar and calendar_dates tables are optional,
+  //   we create views so that the CREATE service_dates table
+  //   is uniform across GTFS archives.
   if (has_calendar_dates_table) {
     db.exec(`
       -- Create an alias VIEW
@@ -213,6 +148,87 @@ const createTemporaryGtfsTables = (db) => {
       ) ;
     `);
   }
+};
+
+const createScheduledTransitTrafficTable = (db) =>
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.scheduled_transit_traffic (
+        shape_id            TEXT,
+        departure_seg_idx   INTEGER,
+        arrival_seg_idx     INTEGER,
+
+        departure_time_sec  INTEGER,
+        arrival_time_sec    INTEGER,
+
+        trip_id             TEXT,
+
+      PRIMARY KEY (
+        shape_id,
+        departure_seg_idx,
+        arrival_seg_idx,
+        departure_time_sec,
+        arrival_time_sec,
+        trip_id
+      )
+    ) WITHOUT ROWID ;
+  `);
+
+const createTmpTables = (db) => {
+  // Determine which tables are included in this GTFS feed.
+  const {
+    has_feed_info_table,
+    has_calendar_table,
+    has_calendar_dates_table,
+  } = db
+    .prepare(
+      `
+        SELECT
+            EXISTS (
+              SELECT
+                  1
+                FROM ${RAW_GTFS}.sqlite_master
+                WHERE (
+                  ( type = 'table' )
+                  AND
+                  ( name = 'feed_info' )
+                )
+            ) AS has_feed_info_table,
+            EXISTS (
+              SELECT
+                  1
+                FROM ${RAW_GTFS}.sqlite_master
+                WHERE (
+                  ( type = 'table' )
+                  AND
+                  ( name = 'calendar' )
+                )
+            ) AS has_calendar_table,
+            EXISTS (
+              SELECT
+                  1
+                FROM ${RAW_GTFS}.sqlite_master
+                WHERE (
+                  ( type = 'table' )
+                  AND
+                  ( name = 'calendar_dates' )
+                )
+            ) AS has_calendar_dates_table ;`
+    )
+    .get();
+
+  if (
+    !(has_feed_info_table || has_calendar_table || has_calendar_dates_table)
+  ) {
+    throw new Error(`GTFS feed must have at least one of the following files:
+      * feed_info
+      * calendar
+      * calendar_dates
+    `);
+  }
+
+  createTmpFeedInfo(db, has_feed_info_table);
+  createTmpCalendar(db, has_calendar_table);
+  createTmpCalendarDates(db, has_calendar_dates_table);
 };
 
 const createFeedDateExtentsTable = (db) => {
@@ -242,11 +258,16 @@ const createFeedDateExtentsTable = (db) => {
               SELECT
                   MIN(start_date) AS date
                 FROM tmp_calendar
+                WHERE ( start_date IS NOT NULL )
               UNION
               SELECT
                   MIN(date) AS date
                 FROM tmp_calendar_dates
-                WHERE ( exception_type = 1 )
+                WHERE (
+                  ( exception_type = 1 )
+                  AND
+                  ( date IS NOT NULL )
+                )
             )
           ;
         `
@@ -284,7 +305,11 @@ const createFeedDateExtentsTable = (db) => {
               SELECT
                   MAX(date) AS date
                 FROM tmp_calendar_dates
-                WHERE ( exception_type = 1 )
+                WHERE (
+                  ( exception_type = 1 )
+                  AND
+                  ( date IS NOT NULL )
+                )
             )
           ;
         `
@@ -352,7 +377,7 @@ const createTemporaryServiceDatesAndDowsTable = (db) => {
 };
 
 const createServiceDatesTable = (db) => {
-  createTemporaryGtfsTables(db);
+  createTmpTables(db);
   createFeedDateExtentsTable(db);
   createTemporaryServiceDatesAndDowsTable(db);
 

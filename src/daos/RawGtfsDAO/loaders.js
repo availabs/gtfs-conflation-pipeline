@@ -84,6 +84,37 @@ async function loadAsync(fileName, rowAsyncIterator) {
     }
 
     xdb.exec("COMMIT;");
+    if (tableName === "trips") {
+      const [totalTrips, tripsWithoutShapes] = db
+        .prepare(
+          `
+            SELECT
+                *
+              FROM (
+                SELECT
+                    COUNT(1) AS total_trips
+                  FROM ${SCHEMA}.trips
+              ) CROSS JOIN (
+                SELECT
+                    COUNT(1) AS shapeless_trips
+                  FROM ${SCHEMA}.trips
+                  WHERE (shape_id IS NULL)
+              ) ;
+          `
+        )
+        .raw()
+        .get();
+
+      if (tripsWithoutShapes > 0) {
+        console.warn(`
+          WARNING: The GTFS trips file contains ${tripsWithoutShapes} trips without shapes out of ${totalTrips} total trips.
+
+                   The trips.shape_id column is optional per the GTFS specification,
+                     however the GTFS conflation pipeline does not currently support such trips.
+                   They will be excluded from the AADT counts.
+        `);
+      }
+    }
     return rowCt;
   } catch (err) {
     // Why we want the transaction.

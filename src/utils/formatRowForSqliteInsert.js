@@ -1,4 +1,4 @@
-const _ = require('lodash');
+const _ = require("lodash");
 
 /**
  * Inserting integers into TEXT columns appends decimal portion.
@@ -10,6 +10,8 @@ const _ = require('lodash');
  * @returns { string[] } The row data in an array, ready for use in parameterized insert stmt.
  */
 const formatRowForSqliteInsert = (columnsList, row) =>
-  columnsList.map(col => (_.isNil(row[col]) ? null : `${row[col]}`));
+  columnsList.map((col) =>
+    _.isNil(row[col]) || row[col] === "" ? null : `${row[col]}`
+  );
 
 module.exports = formatRowForSqliteInsert;
