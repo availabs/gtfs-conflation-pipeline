@@ -1,18 +1,12 @@
-/* eslint-disable no-continue, no-constant-condition, no-cond-assign, jsdoc/require-jsdoc */
+/* eslint-disable no-constant-condition */
 
 const turf = require("@turf/turf");
 const _ = require("lodash");
 
-// // Introducing "error" with full knowledge of it's bounds.
-// //   And informing dependents of internal tolerances.
-// //   Encapsulation with QA quanta/qualia metadata.
-// const DIST_BETWEEN_PAIRED_NODES = 0.002; // 2 meters
-
 const removeRedundantCoords = (coords) =>
   coords.filter((coord, i) => !_.isEqual(coords[i - 1], coord));
 
-// NOTE: Requires the mergePathLineStringsUsingMetadata instance's "this" context via bind/call.
-function mergePathLineStringsUsingMetadata(S, T, shstMatchesById) {
+const mergePathLineStringsUsingMetadata = (S, T, shstMatchesById) => {
   const sShstMatchIds = S.properties.pathDecompositionInfo
     .map(({ id }) => id)
     .filter((id) => id !== null);
@@ -138,7 +132,6 @@ function mergePathLineStringsUsingMetadata(S, T, shstMatchesById) {
   const bPostIntxnCoords = removeRedundantCoords(
     bPostIntxnPathDecompositionInfo.reduce((acc, { id }) => {
       if (id !== null) {
-        // Using the ShstMatchesSubGraphBuilder instance's this context.
         const shstMatch = shstMatchesById[id];
 
         const coords = turf.getCoords(shstMatch);
@@ -201,6 +194,6 @@ function mergePathLineStringsUsingMetadata(S, T, shstMatchesById) {
   });
 
   return mergedPath;
-}
+};
 
 module.exports = mergePathLineStringsUsingMetadata;

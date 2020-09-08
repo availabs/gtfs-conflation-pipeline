@@ -3,7 +3,7 @@
 const turf = require("@turf/turf");
 const _ = require("lodash");
 
-const mergeLineStringsGeospatially = require("../../../utils/gis/mergeLineStringsGeospatially");
+const mergeLineStringsGeospatially = require("../../../../utils/gis/mergeLineStringsGeospatially");
 
 function mergePathSegmentsGeospatially(S, T) {
   const sShstMatchIds = S.properties.pathDecompositionInfo

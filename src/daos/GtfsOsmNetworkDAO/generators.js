@@ -58,9 +58,16 @@ function* makeMatchesIterator() {
   }
 }
 
-// Allow loader to pass the transaction database instance, xdb.
-//   This is because the load of tmp_shst_match_features
-//     has not yet been committed, so db will not see it.
+/*
+  [
+    // For each GTFS shape, a topologically sorted list of objects...
+    {
+      gtfsNetworkEdge: <GeoJSON feature for the GTFS shape segment.>,
+      shstMatches: [...shst match GeoJSON features for the GTFS shape segment.]
+    },
+    ...
+  ]
+ */
 function* makeShapeMatchesIterator() {
   const iterQuery = db.prepare(`
       SELECT
@@ -107,8 +114,11 @@ function* makeShapeMatchesIterator() {
   const iter = iterQuery.raw().iterate();
 
   for (const unordered_segments_matches of iter) {
+    // Guaranteed to be grouped by shape_id, however
+    //  the order of the shape_segments is not guaranteed.
     const gtfsShapeShstMatches = JSON.parse(unordered_segments_matches);
 
+    // Sort by the shape segments topologically.
     gtfsShapeShstMatches.sort(
       (a, b) =>
         _.get(a, ["gtfsNetworkEdge", "properties", "shape_index"], 0) -
@@ -119,12 +129,16 @@ function* makeShapeMatchesIterator() {
   }
 }
 
+/*
+  [ ...shstMatch GeoJSON features for this gtfs shape segment ]
+ */
 function* makeAllShstMatchesIterator() {
   const iter = makeShapeMatchesIterator();
 
-  for (const shapeShstMatches of iter) {
-    for (let i = 0; i < shapeShstMatches.length; ++i) {
-      const { shstMatches } = shapeShstMatches[i];
+  for (const matchingsForGtfsShape of iter) {
+    // Breaks apart the GTFS shape into the individual segments.
+    for (let i = 0; i < matchingsForGtfsShape.length; ++i) {
+      const { shstMatches } = matchingsForGtfsShape[i];
 
       if (!_.isEmpty(shstMatches)) {
         for (let j = 0; j < shstMatches.length; ++j) {

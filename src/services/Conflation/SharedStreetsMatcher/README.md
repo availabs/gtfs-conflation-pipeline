@@ -21,3 +21,14 @@ The ConflationMap segments incorporate that metadata
 
 If we use OSRM to get the OSRM nodes for a GTFS Shape Segment,
   we can then JOIN it to ShstRefs and/or ConflationMap segments.
+
+## SharedStreets Reference section[x, y]
+
+QUESTION:
+What do the x & y represent?
+
+I had assumed they were the start and end distances along.
+However, in some cases x > y.
+
+ANSWER:
+Happens for extremely short geometries (longest observed case < 1/2 foot).

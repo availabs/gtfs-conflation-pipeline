@@ -13,9 +13,12 @@ const GtfsNetworkDAO = require("../GtfsNetworkDAO");
 
 const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 
-const { matchSegmentedShapeFeatures } = require("./SharedStreetsMatcher");
+const {
+  matchSegmentedShapeFeatures,
+  chooseShstMatchesForShape,
+} = require("../../services/Conflation");
 
-const chooseShstMatchesForShape = require("./chooseShstMatchesForShape");
+const { makeShapeMatchesIterator } = require("./generators");
 
 const PRECISION = 6;
 
@@ -90,6 +93,8 @@ async function loadRawShStMatches(xdb) {
 //         and use graph connectivity to choose matches.
 //         If shape is unconnected, use OSRM to help ShSt matching.
 function loadProcessedShstMatches(xdb) {
+  debugger;
+
   xdb.exec(`
     DROP TABLE IF EXISTS ${SCHEMA}.gtfs_shape_shst_match_paths;
 
@@ -120,10 +125,10 @@ function loadProcessedShstMatches(xdb) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ;
   `);
 
-  const iter = this.makeShapeMatchesIterator();
+  const iter = makeShapeMatchesIterator();
 
   for (const gtfsShapeShstMatches of iter) {
-    const chosenPaths = chooseShstMatchesForShape(gtfsShapeShstMatches);
+    const { chosenPaths } = chooseShstMatchesForShape(gtfsShapeShstMatches);
 
     if (_.isEmpty(chosenPaths)) {
       continue;
@@ -187,7 +192,7 @@ async function load() {
     xdb.exec("COMMIT");
 
     xdb.exec("BEGIN");
-    loadProcessedShstMatches.call(this, xdb);
+    loadProcessedShstMatches(xdb);
     xdb.exec("COMMIT;");
   } catch (err) {
     console.error(err);

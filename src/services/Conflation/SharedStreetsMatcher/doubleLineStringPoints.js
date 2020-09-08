@@ -1,6 +1,12 @@
+/*
+    The idea behind this module is to increase number of coordinates
+    being passed to OSRM's (via SharedStreets) Hidden Markov Model matcher.
+ 
+    Not sure how effective (or counter-productive) it is.
+*/
 const turf = require("@turf/turf");
 
-const doubleLineStringPoints = feature => {
+const doubleLineStringPoints = (feature) => {
   const { features: explodedPoints } = turf.explode(feature);
 
   const [[startLon, startLat]] = turf.getCoords(feature.geometry.coordinates);
@@ -10,11 +16,11 @@ const doubleLineStringPoints = feature => {
       const prevPt = explodedPoints[i];
 
       const {
-        geometry: { coordinates: midPtCoords }
+        geometry: { coordinates: midPtCoords },
       } = turf.midpoint(pt, prevPt);
 
       const {
-        geometry: { coordinates: curPtCoords }
+        geometry: { coordinates: curPtCoords },
       } = pt;
 
       acc.push(midPtCoords);
@@ -26,7 +32,7 @@ const doubleLineStringPoints = feature => {
   );
 
   return turf.lineString(enhancedCoords, feature.properties, {
-    id: feature.id
+    id: feature.id,
   });
 };
 
