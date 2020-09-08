@@ -29,8 +29,11 @@ const createGtfsMatchesConflationMapJoinTable = (db) =>
 
       conflation_map_id  INTEGER,
 
+      conf_map_seg_len   REAL,
       conf_map_pre_len   REAL,
       conf_map_post_len  REAL,
+
+      intersection_len   REAL,
 
       along_idx          INTEGER,
 

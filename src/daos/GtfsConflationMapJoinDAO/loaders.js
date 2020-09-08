@@ -322,8 +322,10 @@ function loadGtfsMatchesConflationMapJoinTable() {
       gtfs_shape_id,
       gtfs_shape_index,
       conflation_map_id,
+      conf_map_seg_len,
       conf_map_pre_len,
       conf_map_post_len,
+      intersection_len,
       along_idx
     )
       SELECT
@@ -331,8 +333,12 @@ function loadGtfsMatchesConflationMapJoinTable() {
           gtfs_shape_index,
 
           conflation_map_id,
+
+          conf_map_seg_len,
           conf_map_pre_len,
           conf_map_post_len,
+
+          intersection_len,
 
           along_rank - 1
         FROM (
@@ -341,8 +347,12 @@ function loadGtfsMatchesConflationMapJoinTable() {
               gtfs_shape_index,
 
               conflation_map_id,
+
+              conf_map_seg_len,
               conf_map_pre_len,
               conf_map_post_len,
+
+              intersection_len,
 
               RANK () OVER (
                 PARTITION BY
