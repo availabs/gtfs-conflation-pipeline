@@ -7,28 +7,31 @@ pushd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null
 INF='../derived_data/gtfs_qa_conflation_map.ndjson'
 OUTF='../derived_data/gtfs_qa_conflation_map.mbtiles'
 
+# NOTE: Adding the higher nlev values at a higher zoom level INCREASES the tileset size.
+#       It is better to add them at lower zoom levels and set a maximum-zoom.
+
 FILTER='
   {
     "*": [
       "all",
       [ "any",
-        [ "<", "netlev", 1 ],
-        [ ">=", "$zoom", 15 ],
+        [ "<", "nlev", 1 ],
+        [ ">=", "$zoom", 14 ],
         [ "all",
           [ ">=", "$zoom", 3 ],
-          [ "<=", "netlev", 1 ]
+          [ "<=", "nlev", 1 ]
         ],
         [ "all",
-          [ ">=", "$zoom", 11 ],
-          [ "<=", "netlev", 2 ]
+          [ ">=", "$zoom", 4 ],
+          [ "<=", "nlev", 2 ]
+        ],
+        [ "all",
+          [ ">=", "$zoom", 10 ],
+          [ "<=", "nlev", 3 ]
         ],
         [ "all",
           [ ">=", "$zoom", 13 ],
-          [ "<=", "netlev", 3 ]
-        ],
-        [ "all",
-          [ ">=", "$zoom", 14 ],
-          [ "<=", "netlev", 5 ]
+          [ "<=", "nlev", 4 ]
         ]
       ]
     ]
@@ -43,6 +46,7 @@ tippecanoe \
   --generate-ids \
   --read-parallel \
   --minimum-detail 8 --extend-zooms-if-still-dropping \
+  --maximum-zoom 14 \
   -j "$FILTER" \
   --force -o "$OUTF" \
   "$INF"
