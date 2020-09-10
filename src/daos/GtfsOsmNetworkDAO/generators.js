@@ -1,5 +1,6 @@
 /* eslint-disable no-restricted-syntax, jsdoc/require-jsdoc, no-param-reassign */
 
+const turf = require("@turf/turf");
 const _ = require("lodash");
 const db = require("../../services/DbService");
 
@@ -19,7 +20,7 @@ const {
 //   PRIMARY KEY (shape_id, shape_index)
 // ) WITHOUT ROWID ;
 //
-// CREATE TABLE IF NOT EXISTS ${SCHEMA}.tmp_raw_shst_matches (
+// CREATE TABLE IF NOT EXISTS ${SCHEMA}.tmp_shst_match_features (
 //   shape_id       TEXT,
 //   shape_index    INTEGER,
 //   osrm_dir       TEXT,
@@ -42,7 +43,7 @@ function* makeMatchesIterator() {
             ']'
           ) AS shst_matches
         FROM ${GTFS_NETWORK}.shape_segments AS network_edges
-          INNER JOIN ${GTFS_OSM_NETWORK}.tmp_raw_shst_matches AS matches USING (shape_id, shape_index)
+          INNER JOIN ${GTFS_OSM_NETWORK}.tmp_shst_match_features AS matches USING (shape_id, shape_index)
         GROUP BY network_edges.feature
         ORDER BY network_edges.geoprox_key
       ;
@@ -195,9 +196,61 @@ function* makeAllChosenShstMatchesIterator() {
   }
 }
 
+function* makeMatchesMultiLineStringsIterator() {
+  const iterQuery = db.prepare(`
+      SELECT
+          MAX(network_edges.feature) AS gtfs_network_edge,
+          (
+            '[' ||
+              group_concat(
+                json_patch(
+                  json(matches.feature),
+                  json_object(
+                    'id',
+                    matches.id,
+                    'properties',
+                    json_object(
+                      'path_index',
+                      chosen.path_index,
+                      'path_edge_index',
+                      chosen.path_edge_index
+                    )
+                  )
+                )
+              ) ||
+            ']'
+          ) AS chosen_shst_matches
+        FROM ${GTFS_NETWORK}.shape_segments AS network_edges
+          LEFT OUTER JOIN ${GTFS_OSM_NETWORK}.tmp_shst_match_features AS matches
+            USING (shape_id, shape_index)
+          LEFT OUTER JOIN ${GTFS_OSM_NETWORK}.gtfs_shape_shst_match_paths AS chosen
+            ON (matches.id = chosen.shst_match_id)
+        GROUP BY network_edges.id
+        ORDER BY network_edges.shape_id, network_edges.shape_index
+      ;
+  `);
+
+  const iter = iterQuery.raw().iterate();
+
+  for (const [gtfs_network_edge, chosen_shst_matches] of iter) {
+    const gtfsNetworkEdge = JSON.parse(gtfs_network_edge);
+    const chosenShstMatches = _.sortBy(JSON.parse(chosen_shst_matches), [
+      "properties.path_index",
+      "properties.path_edge_index",
+    ]);
+
+    const matchesMultiLineString = _.isEmpty(chosenShstMatches)
+      ? null
+      : turf.multiLineString(chosenShstMatches.map((m) => turf.getCoords(m)));
+
+    yield { gtfsNetworkEdge, matchesMultiLineString };
+  }
+}
+
 module.exports = {
   makeMatchesIterator,
   makeShapeMatchesIterator,
   makeAllShstMatchesIterator,
   makeAllChosenShstMatchesIterator,
+  makeMatchesMultiLineStringsIterator,
 };

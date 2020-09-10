@@ -16,31 +16,24 @@ const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 const {
   matchSegmentedShapeFeatures,
   chooseShstMatchesForShape,
+  scoreChosenPaths,
 } = require("../../services/Conflation");
 
-const { makeShapeMatchesIterator } = require("./generators");
+const {
+  createTmpShstMatchFeaturesTable,
+  createGtfsShapeShstMatchPathsTable,
+  createGtfsShapeShstMatchScoresTable,
+} = require("./createTableFns");
+
+const {
+  makeShapeMatchesIterator,
+  makeMatchesMultiLineStringsIterator,
+} = require("./generators");
 
 const PRECISION = 6;
 
 async function loadRawShStMatches(xdb) {
-  // Step 1: Iterate in geospatial order and collect matches in TEMP table.
-  xdb.exec(`
-      DROP TABLE IF EXISTS ${SCHEMA}.tmp_shst_match_features;
-
-      CREATE TABLE IF NOT EXISTS ${SCHEMA}.tmp_shst_match_features (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        shape_id        TEXT,
-        shape_index     INTEGER,
-        shst_reference  TEXT,
-        section_start   REAL,
-        section_end     REAL,
-        osrm_dir        TEXT,
-        feature_len_km  REAL,
-        feature         TEXT,
-        
-        UNIQUE (shape_id, shape_index, shst_reference, section_start, section_end)
-      ) ;
-  `);
+  createTmpShstMatchFeaturesTable(xdb);
 
   const insertShstMatchStmt = xdb.prepare(`
       INSERT OR IGNORE INTO tmp_shst_match_features (
@@ -93,24 +86,7 @@ async function loadRawShStMatches(xdb) {
 //         and use graph connectivity to choose matches.
 //         If shape is unconnected, use OSRM to help ShSt matching.
 function loadProcessedShstMatches(xdb) {
-  debugger;
-
-  xdb.exec(`
-    DROP TABLE IF EXISTS ${SCHEMA}.gtfs_shape_shst_match_paths;
-
-    CREATE TABLE IF NOT EXISTS ${SCHEMA}.gtfs_shape_shst_match_paths (
-      gtfs_shape_id     INTEGER,
-      gtfs_shape_index  INTEGER,
-      path_index        INTEGER,
-      path_edge_index   INTEGER,
-      shst_match_id     INTEGER,
-      shst_reference    TEXT,
-      shst_ref_start    REAL,
-      shst_ref_end      REAL,
-      
-      PRIMARY KEY (gtfs_shape_id, gtfs_shape_index, path_index, path_edge_index)
-    ) WITHOUT ROWID;
-  `);
+  createGtfsShapeShstMatchPathsTable(xdb);
 
   const insertStmt = xdb.prepare(`
     INSERT OR IGNORE INTO gtfs_shape_shst_match_paths (
@@ -180,6 +156,44 @@ function loadProcessedShstMatches(xdb) {
   }
 }
 
+function loadChosenShstMatchesScores(xdb) {
+  createGtfsShapeShstMatchScoresTable(xdb);
+
+  const insertStmt = xdb.prepare(`
+    INSERT OR IGNORE INTO gtfs_shape_shst_match_scores (
+      gtfs_shape_id,
+      gtfs_shape_index,
+      scores
+    ) VALUES (?, ?, ?) ;
+  `);
+
+  const iter = makeMatchesMultiLineStringsIterator();
+
+  for (const { gtfsNetworkEdge, matchesMultiLineString } of iter) {
+    const {
+      properties: { shape_id, shape_index },
+    } = gtfsNetworkEdge;
+
+    if (matchesMultiLineString === null) {
+      insertStmt.run([shape_id, shape_index, null]);
+      continue;
+    }
+
+    const scores = scoreChosenPaths(gtfsNetworkEdge, matchesMultiLineString);
+
+    // if (scores.frechet < 0.5) {
+    // console.log();
+    // console.log(JSON.stringify(scores, null, 4));
+    // console.log();
+    // console.log(JSON.stringify(gtfsNetworkEdge));
+    // console.log();
+    // console.log(JSON.stringify(matchesMultiLineString));
+    // console.log();
+    // }
+
+    insertStmt.run([shape_id, shape_index, JSON.stringify(scores)]);
+  }
+}
 async function load() {
   const xdb = db.openLoadingConnectionToDb(SCHEMA);
 
@@ -193,6 +207,10 @@ async function load() {
 
     xdb.exec("BEGIN");
     loadProcessedShstMatches(xdb);
+    xdb.exec("COMMIT;");
+
+    xdb.exec("BEGIN");
+    loadChosenShstMatchesScores(xdb);
     xdb.exec("COMMIT;");
   } catch (err) {
     console.error(err);
