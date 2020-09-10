@@ -299,18 +299,18 @@ const shstMatchFeatures = async (features, flags = []) => {
   const matches = [];
 
   // matching will use car routing rules in OSRM
-  const { osrmDir, matchedFeatures: matchedCar = [] } =
+  const { osrmDir, matchedFeatures: matchedUnassisted = [] } =
     // (await runMatcher(features, flags.concat(CAR))) || {};
     (await runMatcher(features, flags)) || {};
 
-  if (Array.isArray(matchedCar)) {
-    matchedCar.forEach((feature) => {
+  if (Array.isArray(matchedUnassisted)) {
+    matchedUnassisted.forEach((feature) => {
       /* eslint-disable-next-line */
       feature.properties.pp_osrm_assisted = false;
     });
   }
 
-  updateMatches(matches, matchedCar);
+  updateMatches(matches, matchedUnassisted);
   updateUnmatched(unmatched, matches);
 
   const osrmMethods = [ROUTE, MATCH];
@@ -349,6 +349,8 @@ const shstMatchFeatures = async (features, flags = []) => {
         matchedOsrmMappedCar.forEach((feature) => {
           /* eslint-disable-next-line */
           feature.properties.pp_osrm_assisted = true;
+          feature.properties.pp_osrm_method = osrmMethod;
+          feature.properties.pp_line_slice_method = lineSliceMethod;
         });
       }
 
