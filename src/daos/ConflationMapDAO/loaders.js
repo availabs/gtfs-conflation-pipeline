@@ -13,6 +13,8 @@ const SCHEMA = require("./DATABASE_SCHEMA_NAME");
 const { createConflationMapTable } = require("./createTableFns");
 const roundGeometryCoordinates = require("../../utils/roundGeometryCoordinates");
 
+const BUFFER_SIZE = 0.005; // 5 meters
+
 const targetMaps = [
   "ris_2016",
   "ris_2017",
@@ -35,8 +37,6 @@ function load(conflationMapSqlitePath) {
   try {
     db.prepare("BEGIN;").run();
 
-    db.exec(`DROP TABLE IF EXISTS ${SCHEMA}.conflation_map;`);
-
     createConflationMapTable(db);
 
     const insertStmt = db.prepare(`
@@ -47,6 +47,14 @@ function load(conflationMapSqlitePath) {
           length_km,
           feature
         ) VALUES (?, ?, ?, ?, ?) ;
+    `);
+
+    const geopolyInsertStmt = db.prepare(`
+      INSERT INTO ${SCHEMA}.conflation_map_geopoly (
+        _shape,
+        id,
+        networklevel
+      ) VALUES (?, ?, ?) ;
     `);
 
     const dbPath = isAbsolute(conflationMapSqlitePath)
@@ -61,7 +69,8 @@ function load(conflationMapSqlitePath) {
             id,
             feature
           FROM conflation_map
-          ORDER BY id ; `
+          ORDER BY id
+        ; `
       )
       .raw()
       .iterate();
@@ -92,6 +101,26 @@ function load(conflationMapSqlitePath) {
 
       roundGeometryCoordinates(feature);
 
+      let b = turf.buffer(feature, BUFFER_SIZE, { units: "kilometers" });
+      let polyCoords = turf.getCoords(b);
+
+      if (polyCoords.length !== 1) {
+        const convexHull = turf.convex(feature, { concavity: Infinity });
+
+        b = turf.buffer(convexHull, BUFFER_SIZE, { units: "kilometers" });
+
+        polyCoords = turf.getCoords(b);
+      }
+
+      if (polyCoords.length !== 1) {
+        console.warn(
+          "  Attempts to handle complex poly failed. polyCoords.length =",
+          polyCoords.length
+        );
+      }
+
+      const [coords] = polyCoords;
+
       insertStmt.run([
         id,
         shstRef,
@@ -99,6 +128,8 @@ function load(conflationMapSqlitePath) {
         length_km,
         JSON.stringify(feature),
       ]);
+
+      geopolyInsertStmt.run([JSON.stringify(coords), id, networklevel]);
     }
 
     db.prepare("COMMIT;").run();
