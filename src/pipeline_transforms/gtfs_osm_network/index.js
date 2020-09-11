@@ -1,7 +1,5 @@
 /* eslint-disable no-restricted-syntax, jsdoc/require-jsdoc */
 
-const logger = require("../../services/Logger");
-
 const dao = require("../../daos/GtfsOsmNetworkDAO");
 
 const timerId = "load gtfs-osm network";
@@ -12,7 +10,7 @@ const main = async () => {
     await dao.load();
     console.timeEnd(timerId);
   } catch (err) {
-    logger.error(err);
+    console.error(err);
     process.exit(1);
   }
 };

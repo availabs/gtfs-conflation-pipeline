@@ -1,18 +1,16 @@
 /* eslint-disable no-restricted-syntax, jsdoc/require-jsdoc */
 
-const logger = require("../../services/Logger");
-
 const dao = require("../../daos/GtfsConflationMapJoinDAO");
 
 const timerId = "join GTFS shapes to conflation map";
 
 const main = async () => {
   try {
-    logger.time(timerId);
+    console.time(timerId);
     dao.load();
-    logger.timeEnd(timerId);
+    console.timeEnd(timerId);
   } catch (err) {
-    logger.error(err);
+    console.error(err);
     process.exit(1);
   }
 };

@@ -7,15 +7,13 @@ const { pipeline } = require("stream");
 const unzipper = require("unzipper");
 const csv = require("fast-csv");
 
-const logger = require("../../services/Logger");
-
 const dao = require("../../daos/RawGtfsDAO");
 
 const timerId = "load raw gtfs";
 
 const main = async ({ gtfs_zip, output_dir }) => {
   try {
-    logger.time(timerId);
+    console.time(timerId);
 
     const { files: zipEntries } = await unzipper.Open.file(gtfs_zip);
 
@@ -34,7 +32,7 @@ const main = async ({ gtfs_zip, output_dir }) => {
       const rowCt = await dao.loadAsync(fileName, rowAsyncIterator);
 
       if (rowCt === null) {
-        logger.warn(`No table created for ${fileName}.`);
+        console.warn(`No table created for ${fileName}.`);
       }
     }
 
@@ -44,7 +42,7 @@ const main = async ({ gtfs_zip, output_dir }) => {
       copyFileSync(gtfs_zip, zipArchiveCopyPath);
     }
 
-    logger.timeEnd(timerId);
+    console.timeEnd(timerId);
   } catch (err) {
     if (err.message === "database is locked") {
       console.error(
@@ -52,7 +50,7 @@ const main = async ({ gtfs_zip, output_dir }) => {
       );
     }
 
-    logger.error(err);
+    console.error(err);
     process.exit(1);
   }
 };
