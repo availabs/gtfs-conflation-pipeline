@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop */
 
-const { copyFileSync } = require("fs");
+const { copyFileSync, writeFileSync } = require("fs");
 const { join } = require("path");
 const { pipeline } = require("stream");
 
@@ -11,7 +11,7 @@ const dao = require("../../daos/RawGtfsDAO");
 
 const timerId = "load raw gtfs";
 
-const main = async ({ gtfs_zip, output_dir }) => {
+const main = async ({ agency_name, gtfs_zip, output_dir }) => {
   try {
     console.time(timerId);
 
@@ -41,6 +41,10 @@ const main = async ({ gtfs_zip, output_dir }) => {
     if (gtfs_zip !== zipArchiveCopyPath) {
       copyFileSync(gtfs_zip, zipArchiveCopyPath);
     }
+
+    const agencyNameFilePath = join(output_dir, "AGENCY_NAME");
+
+    writeFileSync(agencyNameFilePath, agency_name.toLowerCase());
 
     console.timeEnd(timerId);
   } catch (err) {
