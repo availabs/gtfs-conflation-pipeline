@@ -37,7 +37,7 @@ const createGtfsShapeShstMatchPathsTable = (db) =>
     ) WITHOUT ROWID;
 
     CREATE INDEX ${SCHEMA}.gtfs_shape_shst_match_paths_match_id_idx
-      ON ${SCHEMA}.gtfs_shape_shst_match_paths (shst_match_id) ;
+      ON gtfs_shape_shst_match_paths (shst_match_id) ;
   `);
 
 const createGtfsShapeShstMatchScoresTable = (db) =>
