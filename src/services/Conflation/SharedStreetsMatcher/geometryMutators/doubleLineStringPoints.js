@@ -4,6 +4,7 @@
  
     Not sure how effective (or counter-productive) it is.
 */
+
 const turf = require("@turf/turf");
 
 const doubleLineStringPoints = (feature) => {

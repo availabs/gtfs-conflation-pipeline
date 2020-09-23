@@ -19,9 +19,12 @@ const N = 10;
 const LEN_DIFF_R_REJECT_TH = 0.05;
 const SIMILARITY_THOLD = 0.008;
 
-const splitLineStringUsingSmoothness = require("../../../utils/splitLineStringUsingSmoothness");
-const lineStringsComparator = require("../../../utils/lineStringsComparator");
+const splitLineStringUsingSmoothness = require("../../../../utils/splitLineStringUsingSmoothness");
+const lineStringsComparator = require("../../../../utils/lineStringsComparator");
 
+// osrmDir is in the console logged info when running shst match.
+//   It contains the road network subgraph created to match
+//   the set of features passed to shared streets.
 const getOSRM = memoizeOne((osrmDir) => {
   try {
     const osrmFile = join(osrmDir, "graph.xml.osrm");
@@ -38,7 +41,7 @@ const getOSRM = memoizeOne((osrmDir) => {
   }
 });
 
-const getMatch = (osrm, feature) =>
+const getOsrmMatch = (osrm, feature) =>
   new Promise((resolve) =>
     osrm.match(
       {
@@ -78,7 +81,7 @@ const getMatch = (osrm, feature) =>
     )
   );
 
-const getRoute = (osrm, feature) =>
+const getOsrmRoute = (osrm, feature) =>
   new Promise((resolve) =>
     osrm.route(
       {
@@ -147,7 +150,7 @@ const lineSliceByDistanceMethod = async ({ feature, osrmDir }, osrmMethod) => {
         continue;
       }
 
-      const mapFn = osrmMethod === MATCH ? getMatch : getRoute;
+      const mapFn = osrmMethod === MATCH ? getOsrmMatch : getOsrmRoute;
 
       const osrmMapped = await mapFn(osrm, mutatedFeature);
 
@@ -234,9 +237,9 @@ const lineSliceByBearingMethod = async ({ feature, osrmDir }, osrmMethod) => {
   const mappedOptions = [];
 
   try {
-    const mapFn = osrmMethod === MATCH ? getMatch : getRoute;
+    const mapFn = osrmMethod === MATCH ? getOsrmMatch : getOsrmRoute;
 
-    // [getRoute].map(async mapFn => {
+    // [getOsrmRoute].map(async mapFn => {
     const osrmMappedFeatures = await Promise.all(
       bearingSplitSegments.map((seg) => mapFn(osrm, seg))
     );

@@ -10,8 +10,8 @@ const _ = require("lodash");
 const { pipe, through } = require("mississippi");
 const split = require("split2");
 
-const replaceFeaturesGeomsWithOsrmRoute = require("./replaceFeaturesGeomsWithOsrmRoute");
-const doubleLineStringPoints = require("./doubleLineStringPoints");
+const replaceFeaturesGeomsWithOsrmRoute = require("./geometryMutators/replaceFeaturesGeomsWithOsrmRoute");
+const doubleLineStringPoints = require("./geometryMutators/doubleLineStringPoints");
 
 const UTF8_ENCODING = "utf8";
 
@@ -146,6 +146,7 @@ const preprocessFeatures = (features) =>
 
     let start_dist = 0;
     let prevSegEndCoords;
+
     for (let i = 0; i < numSegs; ++i) {
       const stop_dist = start_dist + segLen;
 
@@ -232,8 +233,7 @@ const updateMatches = (matches, newMatches) => {
       _.isEqual(turf.getCoords(a), turf.getCoords(b))
   );
 
-  // Mutate the original array
-  // Clear it
+  // Clear the original array. MUTATION
   matches.length = 0;
 
   // Fill it with the new set union
@@ -316,9 +316,11 @@ const shstMatchFeatures = async (features, flags = []) => {
   const osrmMethods = [ROUTE, MATCH];
   const lineSliceMethods = [DISTANCE_SLICE_METHOD, BEARING_SLICE_METHOD];
 
+  // Try each OSRM method
   for (let i = 0; i < osrmMethods.length; ++i) {
     const osrmMethod = osrmMethods[i];
 
+    // Try each lineSliceMethod
     for (let j = 0; j < lineSliceMethods.length; ++j) {
       const lineSliceMethod = lineSliceMethods[i];
 
