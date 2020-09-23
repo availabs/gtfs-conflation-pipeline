@@ -12,8 +12,6 @@ const assert = require("assert");
 
 const db = require("../../services/DbService");
 
-const logger = require("../../services/Logger");
-
 const RawGtfsDAO = require("../RawGtfsDAO");
 
 const { RAW_GTFS } = require("../../constants/databaseSchemaNames");
@@ -41,7 +39,7 @@ function loadTripStopTimes() {
 
     if (!shape_id) {
       if (trip_id !== prevWarnedTripId) {
-        logger.warn(`No shape_id for trip ${trip_id}. Skipping.`);
+        console.warn(`No shape_id for trip ${trip_id}. Skipping.`);
         prevWarnedTripId = trip_id;
       }
 

@@ -110,9 +110,6 @@ function* makeGtfsConflationMapJoinIterator() {
       const stopDist =
         conf_map_post_len > SLICE_THLD ? len - conf_map_post_len : len;
 
-      console.log(
-        JSON.stringify({ feature, len, startDist, stopDist }, null, 4)
-      );
       const sliced = turf.lineSliceAlong(feature, startDist, stopDist);
       acc.geoms.push(turf.getCoords(sliced));
       acc.meta.push({ conflation_map_id, networklevel, sliced: true });
