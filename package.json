@@ -21,7 +21,7 @@
     "command-exists": "^1.2.9",
     "curve-matcher": "^1.1.1",
     "eslint-plugin-prettier": "^3.1.4",
-    "fast-csv": "^4.3.0",
+    "fast-csv": "^4.3.6",
     "gdal": "^0.9.9",
     "graphlib": "^2.1.8",
     "lodash": "^4.17.15",
