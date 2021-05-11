@@ -24,7 +24,7 @@
     "fast-csv": "^4.3.0",
     "gdal": "^0.9.9",
     "graphlib": "^2.1.8",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.21",
     "memoize-one": "^5.1.1",
     "mississippi": "^4.0.0",
     "mkdirp": "^0.5.1",
